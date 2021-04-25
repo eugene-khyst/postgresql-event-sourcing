@@ -1,0 +1,24 @@
+spring:
+  jpa:
+    open-in-view: true
+    hibernate:
+      ddl-auto: none
+
+  jackson:
+    default-property-inclusion: non_null
+
+  kafka:
+    producer:
+      properties:
+        max:
+          in:
+            flight:
+              requests:
+                per:
+                  connection: 1
+
+outbox:
+  enabled: true
+  subscription-name: postgresql-event-sourcing-app
+  initial-delay-ms: 1000
+  fixed-delay-ms: 1000
