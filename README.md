@@ -17,20 +17,6 @@
     * [Drawbacks](#0cfc0523189294ac086e11c8e286ba2d)
 * [How to Run the Sample?](#53af957fc9dc9f7083531a00fe3f364e)
 
-## <a name="0b79795d3efc95b9976c7c5b933afce2"></a>Introduction
-
-PostgreSQL is the world's most advanced open source database. Also, PostgreSQL is suitable for Event
-Sourcing.
-
-This repository provides a sample of event sourced system that uses PostgreSQL as event store.
-
-![PostgreSQL Logo](img/potgresql-logo.png)
-
-See also
-
-* [Event Sourcing with Kafka and ksqlDB](https://github.com/evgeniy-khist/ksqldb-event-souring)
-* [Event Sourcing with EventStoreDB](https://github.com/evgeniy-khist/eventstoredb-event-sourcing)
-
 ## <a name="8753dff3c2879207fa06ef1844b1ea4d"></a>Example Domain
 
 The example domain is ride hailing.
@@ -38,6 +24,10 @@ The example domain is ride hailing.
 * A rider can place an order for a ride along a route specifying a price.
 * A driver can accept and complete an order.
 * An order can be cancelled before completion.
+
+![Domain use case diagram](img/domain-1.png)
+
+![Domain state diagram](img/domain-2.png)
 
 ## <a name="19025f75ca30ec4a46f55a6b9afdeba6"></a>Event Sourcing and CQRS 101
 
@@ -57,7 +47,25 @@ Whenever the state of an entity changes, a new event is appended to the list of 
 
 Current state of an entity can be restored by replaying all its events.
 
+Event sourcing is best suited for short-living entities with relatively small total number of
+event (like orders).
+
+Restoring the state of the short-living entity by replaying all its events doesn't have any
+performance impact. Thus, no optimizations for restoring state are required for short-living
+entities.
+
+For endlessly stored entities (like users or bank accounts) with thousands of events restoring state
+by replaying all events is not optimal and snapshotting should be considered.
+
+Snapshotting is an optimization technique where a snapshot of the aggregate's state is also saved,
+so an application can restore the current state of an aggregate from the snapshot instead of from
+scratch.
+
+![Snapshotting in event souring](img/event-sourcing-snapshotting.png)
+
 An entity in event sourcing is also referenced as an aggregate.
+
+A sequence of events for the same aggregate are also referenced as a stream.
 
 ### <a name="b2cf9293622451d86574d2973398ca70"></a>CQRS
 
@@ -69,7 +77,10 @@ A command generates zero or more events or results in an error.
 
 ![CQRS](img/cqrs-1.png)
 
-Event sourcing is usually used in conjunction with CQRS.
+CQRS is a self-sufficient architectural pattern and doesn't require event sourcing.
+
+Event sourcing is usually used in conjunction with CQRS. Event store is used as a write database and
+SQL or NoSQL database as a read database.
 
 ![CQRS](img/cqrs-2.png)
 
@@ -78,16 +89,18 @@ integration with other bounded contexts. Integration events representing the cur
 aggregate should be used for communication between bounded contexts instead of a raw event sourcing
 change events.
 
-### <a name="d8818c2c5ba0364540a49273f684b85c"></a>Advantages of Event Sourcing and CQRS
+### <a name="cc00871be6276415cfb13eb24e97fe48"></a>Advantages of CQRS
+
+* Independent scaling of the read and write databases.
+* Optimized data schema for the read database (e.g. the read databases can be denormalized).
+* Simpler queries (e.g. complex `JOIN` operations can be avoided).
+
+### <a name="845b7e034fb763fcdf57e9467c0a8707"></a>Advantages of Event Sourcing
 
 * Having a true history of the system (audit and traceability).
 * Ability to put the system in any prior state (e.g. for debugging).
 * Read-side projections can be created as needed (later) from events. It allows responding to future
   needs and new requirements.
-* Independent scaling. CQRS allows We can scale the read and write databases independently of each
-  other.
-* Optimized data schema for read database (e.g. the read databases can be denormalized).
-* Simpler queries (e.g. complex `JOIN` operations can be avoided).
 
 ## <a name="70b356f41293ace9df0d04cd8175ac35"></a>Requirements for Event Store
 
@@ -102,47 +115,104 @@ change events.
 
 ## <a name="9f6302143996033ebb94d536b860acc3"></a>Solution Architecture
 
-TBD
+PostgreSQL can be used as an event store. It will natively support appending events, concurrency
+control and reading events. Subscribing on events requires additional implementation.
+
+![PostgreSQL event store ER diagram](img/postgresql-event-store-1.png)
+
+Separate table `ORDER_AGGREGATE` keeps track of the latest versions of the aggregates. It is
+required for optimistic concurrency control.
+
+PostgreSQL doesn't allow subscribing on changes, so the solution is Transactional outbox pattern. A
+service that uses a database inserts events into an *outbox* table as part of the local transaction.
+A separate Message Relay process publishes the events inserted into database to a message broker.
+
+![Transactional outbox pattern](img/transactional-outbox-1.png)
+
+With event sourcing database model classical Transaction outbox pattern can be simplified. An *
+outbox* table is used to keep track of handled events. Outbox handler (aka *Message Relay*
+and *Polling Publisher*) processes new events by polling the database's *outbox* table.
+
+![Simplified transactional outbox pattern](img/transactional-outbox-2.png)
+
+Event processing includes updating the read model and publishing integration events.
+
+All parts together look like this
+
+![PostgreSQL event store](img/postgresql-event-store-2.png)
 
 ### <a name="205928bf89c3012be2e11d1e5e7ad01f"></a>Permanent Storage
 
-TBD
+PostgreSQL stores all data permanently be default.
 
 ### <a name="6eec4db0e612f3a70dab7d96c463e8f6"></a>Optimistic concurrency control
 
-TBD
+Optimistic concurrency control is done by checking aggregate versions in the `ORDER_AGGREGATE`
+table.
+
+Appending an event operation consists of 2 SQL statements in a single transaction:
+
+1. Check the actual and expected version match and increment version
+    ```sql
+    UPDATE ORDER_AGGREGATE SET VERSION = VERSION + 1 WHERE ID = ? AND VERSION = ?
+    ```
+2. Insert new event
+    ```sql
+    INSERT INTO ORDER_EVENT(AGGREGATE_ID, VERSION, EVENT_TYPE, JSON_DATA) VALUES(?, ?, ?, ?)
+    ```
 
 ### <a name="323effe18de24bcc666f161931c903f3"></a>Loading current state
 
-TBD
+Current state of an aggregate can be loaded using simple query that fetches all aggregate events
+order by version in the ascending order
+
+```sql
+SELECT ID, EVENT_TYPE, JSON_DATA FROM ORDER_EVENT WHERE AGGREGATE_ID = ? ORDER BY VERSION ASC
+```
 
 ### <a name="784ff5dca3b046266edf61637822bbff"></a>Subscribe to all events by aggregate type
 
-Dual writes problem occur when you need to update the database **and** send the message
-reliable/atomically and 2-phase commit (2PC) is not an option.
+PostgreSQL doesn't allow subscribing on changes, so the solution is Transactional outbox pattern or
+its variations.
 
-PostgreSQL doesn't allow subscribing on changes, so the solution to the dual writes problem is
-Transactional outbox pattern. An *outbox* table is used to keep track of handled events. Outbox
-handler (aka *message relay* and *polling publisher*) processes new events by polling the
-database's *outbox* table. Event processing includes updating the read model and publishing
-integration events.
+`ORDER_EVENT_OUTBOX` table keeps track of all subscribers (consumer groups) and the last processed
+event ID.
+
+The concept of consumer groups is required to deliver events to only one consumer from the group.
+This is achieved by acquiring a locking on the same record of `ORDER_EVENT_OUTBOX` table.
+
+Outbox handler polls `ORDER_EVENT_OUTBOX` table every second for new events and processes them
+
+1. Read the last processed event ID and acquire lock
+    ```sql
+    SELECT LAST_ID FROM ORDER_EVENT_OUTBOX WHERE SUBSCRIPTION_GROUP = ? FOR UPDATE NOWAIT
+    ```
+2. Fetch new events
+    ```sql
+    SELECT ID, EVENT_TYPE, JSON_DATA FROM ORDER_EVENT WHERE ID > ? ORDER BY ID ASC
+    ```
+3. Update the ID of the last event processed by the subscription
+    ```sql
+    UPDATE ORDER_EVENT_OUTBOX SET LAST_ID = ? WHERE SUBSCRIPTION_GROUP = ?
+    ```
 
 ### <a name="0b584912c4fa746206884e080303ed49"></a>Checkpoints
 
-TBD
+The last known position from where the subscription starts getting events is stored in `LAST_ID`
+column of `ORDER_EVENT_OUTBOX` table.
 
 ### <a name="0cfc0523189294ac086e11c8e286ba2d"></a>Drawbacks
 
-Polling database's *outbox* table for new messages with fixed delay introduces a big lag (delay
-between polls) in eventual consistency between the write and read models.
+1. Polling database's *outbox* table for new messages with fixed delay introduces a big lag (delay
+   between polls) in eventual consistency between the write and read models.
+2. **The Outbox handler might process an event more than once.** It might crash after processing an
+   event but before recording the fact that it has done so. When it restarts, it will then publish
+   the message again.
 
-**In case of outbox handler failure duplicates and out of order events are possible.**
+Consumers of events should be idempotent and filter duplicates and out of order integration events.
 
-Consumers of integration events should be idempotent and filter duplicates and out of order
-integration events.
-
-If your system can't accept even small chance of duplicates or unordering, then persistent
-subscription listener must be extracted into a separate microservice and run in a single replica (
+If your system can't accept even small chance of duplicates or unordering, then Message Relay must
+be extracted into a separate microservice and run in a single replica (
 `.spec.replicas=1` in Kubernetes). This microservice must not be updated using RollingUpdate
 Deployment strategy. Recreate Deployment strategy must be used
 instead (`.spec.strategy.type=Recreate`
