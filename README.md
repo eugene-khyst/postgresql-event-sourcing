@@ -6,7 +6,8 @@
     * [State-Oriented Persistence](#436b314e78fec59a76bad8b93b52ee75)
     * [Event Sourcing](#c4b3d1c8edab1825366ac1d541d8226f)
     * [CQRS](#b2cf9293622451d86574d2973398ca70)
-    * [Advantages of Event Sourcing and CQRS](#d8818c2c5ba0364540a49273f684b85c)
+    * [Advantages of CQRS](#cc00871be6276415cfb13eb24e97fe48)
+    * [Advantages of Event Sourcing](#845b7e034fb763fcdf57e9467c0a8707)
 * [Requirements for Event Store](#70b356f41293ace9df0d04cd8175ac35)
 * [Solution Architecture](#9f6302143996033ebb94d536b860acc3)
     * [Permanent Storage](#205928bf89c3012be2e11d1e5e7ad01f)
@@ -17,9 +18,24 @@
     * [Drawbacks](#0cfc0523189294ac086e11c8e286ba2d)
 * [How to Run the Sample?](#53af957fc9dc9f7083531a00fe3f364e)
 
+## <a name="0b79795d3efc95b9976c7c5b933afce2"></a>Introduction
+
+PostgreSQL is the world's most advanced open source database. Also, PostgreSQL is suitable for Event
+Sourcing.
+
+This repository provides a sample of event sourced system that uses PostgreSQL as event store.
+
+![PostgreSQL Logo](img/potgresql-logo.png)
+
+See also
+
+* [Event Sourcing with Kafka and ksqlDB](https://github.com/evgeniy-khist/ksqldb-event-souring)
+* [Event Sourcing with EventStoreDB](https://github.com/evgeniy-khist/eventstoredb-event-sourcing)
+
 ## <a name="8753dff3c2879207fa06ef1844b1ea4d"></a>Example Domain
 
-The example domain is ride hailing.
+This sample uses heavily simplified ride hailing domain model inspired
+by [tech/uklon](https://careers.uklon.ua/) experience.
 
 * A rider can place an order for a ride along a route specifying a price.
 * A driver can accept and complete an order.
@@ -124,14 +140,14 @@ Separate table `ORDER_AGGREGATE` keeps track of the latest versions of the aggre
 required for optimistic concurrency control.
 
 PostgreSQL doesn't allow subscribing on changes, so the solution is Transactional outbox pattern. A
-service that uses a database inserts events into an *outbox* table as part of the local transaction.
-A separate Message Relay process publishes the events inserted into database to a message broker.
+service that uses a database inserts events into an outbox table as part of the local transaction. A
+separate Message Relay process publishes the events inserted into database to a message broker.
 
 ![Transactional outbox pattern](img/transactional-outbox-1.png)
 
-With event sourcing database model classical Transaction outbox pattern can be simplified. An *
-outbox* table is used to keep track of handled events. Outbox handler (aka *Message Relay*
-and *Polling Publisher*) processes new events by polling the database's *outbox* table.
+With event sourcing database model classical Transaction outbox pattern can be simplified even more.
+An outbox table is used to keep track of handled events. Outbox handler (aka Message Relay and
+Polling Publisher) processes new events by polling the database's outbox table.
 
 ![Simplified transactional outbox pattern](img/transactional-outbox-2.png)
 
@@ -379,5 +395,8 @@ The `test.sh` script has the following instructions:
     466aafd1-288c-4299-be26-3be0c9c5aef1	{"order_id":"466aafd1-288c-4299-be26-3be0c9c5aef1","event_type":"OrderAcceptedEvent","event_timestamp":1619369515114,"version":2,"status":"ACCEPTED","rider_id":"63770803-38f4-4594-aec2-4c74918f7165","price":123.45,"route":[{"ADDRESS":"Київ, вулиця Полярна, 17А","LAT":50.51980052414157,"LON":30.467197278948536},{"ADDRESS":"Київ, вулиця Новокостянтинівська, 18В","LAT":50.48509161169076,"LON":30.485170724431292}],"driver_id":"2c068a1a-9263-433f-a70b-067d51b98378"}
     466aafd1-288c-4299-be26-3be0c9c5aef1	{"order_id":"466aafd1-288c-4299-be26-3be0c9c5aef1","event_type":"OrderCompletedEvent","event_timestamp":1619369517314,"version":3,"status":"COMPLETED","rider_id":"63770803-38f4-4594-aec2-4c74918f7165","price":123.45,"route":[{"ADDRESS":"Київ, вулиця Полярна, 17А","LAT":50.51980052414157,"LON":30.467197278948536},{"ADDRESS":"Київ, вулиця Новокостянтинівська, 18В","LAT":50.48509161169076,"LON":30.485170724431292}],"driver_id":"2c068a1a-9263-433f-a70b-067d51b98378"}
     ```
+
+
+
 
 
