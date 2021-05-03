@@ -219,20 +219,18 @@ column of `ORDER_EVENT_OUTBOX` table.
 
 ### <a name="0cfc0523189294ac086e11c8e286ba2d"></a>Drawbacks
 
-1. Polling database's *outbox* table for new messages with fixed delay introduces a big lag (delay
-   between polls) in eventual consistency between the write and read models.
+1. The asynchronous replication leads to the eventual consistency between the write and read models.
+   But polling database's *outbox* table for new messages with a fixed delay introduces pretty big
+   full consistency lag (greater than or equal to the fixed delay between polls).
 2. **The Outbox handler might process an event more than once.** It might crash after processing an
-   event but before recording the fact that it has done so. When it restarts, it will then publish
-   the message again.
+   event but before recording the fact that it has done so. When it restarts, it will then process
+   the message again (update the read model and send an integration event).
+
+Integration events are delivered with at-least-once delivery guarantee. The exactly-once delivery
+guarantee is hard to achieve due to a dual-write. A dual-write describes a situation when you need
+to atomically update the database and publish messages and two-phase commit (2PC) is not an option.
 
 Consumers of events should be idempotent and filter duplicates and out of order integration events.
-
-If your system can't accept even small chance of duplicates or unordering, then Message Relay must
-be extracted into a separate microservice and run in a single replica (
-`.spec.replicas=1` in Kubernetes). This microservice must not be updated using RollingUpdate
-Deployment strategy. Recreate Deployment strategy must be used
-instead (`.spec.strategy.type=Recreate`
-in Kubernetes) when all existing Pods are killed before new ones are created.
 
 ## <a name="53af957fc9dc9f7083531a00fe3f364e"></a>How to Run the Sample?
 
