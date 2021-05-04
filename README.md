@@ -230,7 +230,7 @@ Integration events are delivered with at-least-once delivery guarantee. The exac
 guarantee is hard to achieve due to a dual-write. A dual-write describes a situation when you need
 to atomically update the database and publish messages and two-phase commit (2PC) is not an option.
 
-Consumers of events should be idempotent and filter duplicates and out of order integration events.
+Consumers of integration events should be idempotent and filter duplicates and unordered events.
 
 ## <a name="53af957fc9dc9f7083531a00fe3f364e"></a>How to Run the Sample?
 
