@@ -224,7 +224,7 @@ column of `ORDER_EVENT_OUTBOX` table.
    full consistency lag (greater than or equal to the fixed delay between polls).
 2. **The Outbox handler might process an event more than once.** It might crash after processing an
    event but before recording the fact that it has done so. When it restarts, it will then process
-   the message again (update the read model and send an integration event).
+   the same event again (update the read model and send an integration event).
 
 Integration events are delivered with at-least-once delivery guarantee. The exactly-once delivery
 guarantee is hard to achieve due to a dual-write. A dual-write describes a situation when you need
