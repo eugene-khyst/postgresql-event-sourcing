@@ -2,24 +2,26 @@ version: '2'
 
 services:
   postgres:
-    image: postgres:13
+    image: postgres:14-alpine
     environment:
       POSTGRES_DB: postgres
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: s3cr3t
     ports:
       - "5432:5432"
+    restart: unless-stopped
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:6.0.0
+    image: confluentinc/cp-zookeeper:7.1.1
     ports:
       - "2181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    restart: unless-stopped
 
   kafka:
-    image: confluentinc/cp-kafka:6.0.0
+    image: confluentinc/cp-kafka:7.1.1
     hostname: kafka
     depends_on:
       - zookeeper
@@ -36,12 +38,10 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_LOG_RETENTION_MS: -1
       KAFKA_LOG_RETENTION_BYTES: -1
+    restart: unless-stopped
 
   event-sourcing-app:
-    image: example.com/postgresql-event-sourcing:1.0.0
-    depends_on:
-      - postgres
-      - kafka
+    image: evgeniy-khyst/postgresql-event-sourcing:${version:-latest}
     ports:
       - "8080"
     environment:
@@ -53,10 +53,9 @@ services:
     restart: unless-stopped
 
   nginx:
-    image: nginx:latest
-    depends_on:
-      - event-sourcing-app
+    image: nginx:1.21-alpine
     ports:
       - "8080:8080"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./default.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped

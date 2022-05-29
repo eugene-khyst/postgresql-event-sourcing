@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.example'
-sourceCompatibility = '11'
+sourceCompatibility = '17'
 
 configurations {
     compileOnly {
@@ -20,7 +20,7 @@ repositories {
 
 jib {
     to {
-        image = "example.com/${project.name}:${project.version}"
+        image = "evgeniy-khyst/${project.name}:${project.version}"
     }
 }
 
