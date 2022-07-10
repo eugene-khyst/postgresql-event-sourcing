@@ -1,0 +1,29 @@
+@startuml
+
+scale max 1024 width
+scale max 800 height
+
+skinparam defaultFontName Monospaced
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+
+package "Service A (Bounded Context)" #line.dashed {
+  component API
+  component "Query Services\n//Read Model//" as query #lightgreen
+  component "Command Services\n//Domain Model//" as command #lightblue
+  database "Read\nDatabase" as readDB #lightgreen
+  database "Write\nDatabase" as writeDB #lightblue
+}
+
+component "**Service B**\n**(Bounded Context)**" as sB
+
+API --> query: Queries
+API --> command: Commands
+command --> writeDB
+query --> readDB
+command -> query: Events
+sB <-- command: Integration\nevents
+
+@enduml

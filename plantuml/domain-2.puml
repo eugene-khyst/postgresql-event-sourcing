@@ -1,0 +1,21 @@
+@startuml
+
+left to right direction
+
+scale max 1024 width
+scale max 800 height
+
+skinparam defaultFontName Monospaced
+skinparam shadowing false
+
+[*] -> Placed : Place order
+Placed --> Adjusted : Edit order price
+Placed --> Accepted : Accept order
+Placed --> Cancelled : Cancel order
+Adjusted --> Adjusted : Edit order price
+Adjusted --> Accepted : Accept order
+Adjusted --> Cancelled : Cancel order
+Accepted --> Completed : Complete order
+Completed -> [*]
+
+@enduml

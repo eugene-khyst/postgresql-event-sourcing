@@ -1,0 +1,33 @@
+@startuml
+
+scale max 1024 width
+scale max 800 height
+
+skinparam defaultFontName Monospaced
+skinparam shadowing false
+skinparam defaultTextAlignment center
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+
+package "Service A (Bounded Context)" #line.dashed {
+  component API
+  component "Command Handler" as CommandHandler #lightblue
+  component "Domain Model" as DomainModel #lightblue
+  component "Event Handler" as EventHandler #lightblue
+  database "Event\nStore" as EventStore #lightblue
+  component Repositories #lightgreen
+  database "Read\nDatabase" as ReadDB #lightgreen
+}
+
+component "**Service B**\n**(Bounded Context)**" as sB
+
+API -d-> CommandHandler: Commands
+API -d-> Repositories: Queries
+CommandHandler -d-> DomainModel
+DomainModel -d-> EventStore: Read aggregate events\nAppend new events
+EventStore -r-> EventHandler: Get new events\nin near real-time
+EventHandler -u-> ReadDB: Update read model
+Repositories -d-> ReadDB: Execute queries
+EventHandler -r-> sB: Integration events\nrepresenting\naggregate state
+
+@enduml

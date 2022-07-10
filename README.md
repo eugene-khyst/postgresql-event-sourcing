@@ -23,8 +23,14 @@
 
 ## <a id="0b79795d3efc95b9976c7c5b933afce2"></a>Introduction
 
-PostgreSQL is the world's most advanced open source database. Also, PostgreSQL is suitable for Event
-Sourcing.
+Usually, our applications operate with the current state of a domain object. But sometimes, we need to know the entire history of the domain object changes. For example, we want to know how an order got into its current state.
+
+We can store all changes to the domain object state as a sequence of events in an append-only event stream. Thus, event streams will contain an entire history of changes. But how can we be sure that this history is authentic and free from errors? We can use event streams as a primary source of truth in a system. To get the current state of an object, we have to replay all events in the order of occurrence. This pattern is called event sourcing. Database for storing the event streams is called even store.
+
+There are specialized databases for event sourcing. Developer Advocates working for the companies behind these specialized databases tell you that you shouldn't implement event sourcing with traditional relational or document-oriented databases. Is it true or just a marketing ploy? In fact, you can implement event sourcing with any database. The repositories in this series provide samples of event sourced systems that use different databases as event store.
+
+PostgreSQL is the world's most advanced open source database. Also, PostgreSQL is suitable for event
+sourcing.
 
 This repository provides a sample of event sourced system that uses PostgreSQL as event store.
 
@@ -32,59 +38,68 @@ This repository provides a sample of event sourced system that uses PostgreSQL a
 
 See also
 
-* [Event Sourcing with Kafka and ksqlDB](https://github.com/evgeniy-khist/ksqldb-event-souring)
 * [Event Sourcing with EventStoreDB](https://github.com/evgeniy-khist/eventstoredb-event-sourcing)
+* [Event Sourcing with Kafka and ksqlDB](https://github.com/evgeniy-khist/ksqldb-event-souring)
 
 ## <a id="8753dff3c2879207fa06ef1844b1ea4d"></a>Example Domain
 
-This sample uses heavily simplified ride hailing domain model inspired
-by [tech/uklon](https://careers.uklon.ua/) experience.
+This sample uses a simple domain model inspired by my work experience in a ride-hailing company.
 
 * A rider can place an order for a ride along a route specifying a price.
+* A rider can edit order price to pay more instead of waiting in cases of very high demand.
 * A driver can accept and complete an order.
 * An order can be cancelled before completion.
 
-![Domain use case diagram](img/domain-1.png)
+![Domain use case diagram](img/plantuml/domain-1.png)
 
-![Domain state diagram](img/domain-2.png)
+![Domain state diagram](img/plantuml/domain-2.png)
 
-## <a id="19025f75ca30ec4a46f55a6b9afdeba6"></a>Event Sourcing and CQRS 101
+## <a id="19025f75ca30ec4a46f55a6b9afdeba6"></a>Event Sourcing and CQRS basics
 
 ### <a id="436b314e78fec59a76bad8b93b52ee75"></a>State-Oriented Persistence
 
-![State-oriented persistence](img/es-cqrs-state-oriented-persistence.png)
+![State-oriented persistence](img/plantuml/es-cqrs-state-oriented-persistence.png)
 
 ### <a id="c4b3d1c8edab1825366ac1d541d8226f"></a>Event Sourcing
 
 Event sourcing persists the state of an entity as a sequence of immutable state-changing events.
 
-![Event sourcing](img/event-sourcing-1.png)
+![Event sourcing](img/plantuml/event-sourcing-1.png)
 
 Whenever the state of an entity changes, a new event is appended to the list of events.
 
-![Event sourcing](img/event-sourcing-2.png)
+![Event sourcing](img/plantuml/event-sourcing-2.png)
 
 Current state of an entity can be restored by replaying all its events.
 
-Event sourcing is best suited for short-living entities with relatively small total number of
-event (like orders).
+An entity in event sourcing is also referenced as an **aggregate**.
+
+A sequence of events for the same aggregate are also referenced as a **stream**.
+
+Event sourcing is best suited for short-living entities with a small total number of
+events (e.g. orders).
 
 Restoring the state of the short-living entity by replaying all its events doesn't have any
 performance impact. Thus, no optimizations for restoring state are required for short-living
 entities.
 
-For endlessly stored entities (like users or bank accounts) with thousands of events restoring state
+For endlessly stored entities (e.g. users, bank accounts) with thousands of events restoring state
 by replaying all events is not optimal and snapshotting should be considered.
+
+### Snapshotting
 
 Snapshotting is an optimization technique where a snapshot of the aggregate's state is also saved,
 so an application can restore the current state of an aggregate from the snapshot instead of from
 scratch.
 
-![Snapshotting in event souring](img/event-sourcing-snapshotting.png)
+On every *nth* event, make an aggregate snapshot by storing an aggregate state and its version.
 
-An entity in event sourcing is also referenced as an aggregate.
+To restore an aggregate state:
 
-A sequence of events for the same aggregate are also referenced as a stream.
+1. first read the latest snapshot,
+2. then read events forward from the original stream starting from the version pointed by the snapshot.
+
+![Snapshotting in event souring](img/plantuml/event-sourcing-snapshotting.png)
 
 ### <a id="b2cf9293622451d86574d2973398ca70"></a>CQRS
 
@@ -94,14 +109,14 @@ processed by different handlers.
 
 A command generates zero or more events or results in an error.
 
-![CQRS](img/cqrs-1.png)
+![CQRS](img/plantuml/cqrs-1.png)
 
 CQRS is a self-sufficient architectural pattern and doesn't require event sourcing.
 
 Event sourcing is usually used in conjunction with CQRS. Event store is used as a write database and
 SQL or NoSQL database as a read database.
 
-![CQRS](img/cqrs-2.png)
+![CQRS](img/plantuml/cqrs-2.png)
 
 Events in event sourcing are a part of a bounded context and should not be used "as-is" for
 integration with other bounded contexts. Integration events representing the current state of an
@@ -120,6 +135,9 @@ change events.
 * Ability to put the system in any prior state (e.g. for debugging).
 * Read-side projections can be created as needed (later) from events. It allows responding to future
   needs and new requirements.
+  
+The majority of developers I interviewed highlight having a true history of the system as the main advantage 
+of event sourcing.
 
 ## <a id="70b356f41293ace9df0d04cd8175ac35"></a>Requirements for Event Store
 
