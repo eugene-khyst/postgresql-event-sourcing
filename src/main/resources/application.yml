@@ -1,8 +1,6 @@
 spring:
-  jpa:
-    open-in-view: true
-    hibernate:
-      ddl-auto: none
+
+  task.execution.pool.core-size: 8
 
   jackson:
     default-property-inclusion: non_null
@@ -10,15 +8,16 @@ spring:
   kafka:
     producer:
       properties:
-        max:
-          in:
-            flight:
-              requests:
-                per:
-                  connection: 1
+        max.in.flight.requests.per.connection: 1
 
-outbox:
-  enabled: true
-  subscription-name: postgresql-event-sourcing-app
-  initial-delay-ms: 1000
-  fixed-delay-ms: 1000
+event-sourcing:
+  snapshotting:
+    # com.example.eventsourcing.domain.AggregateType
+    ORDER:
+      enabled: true
+      # Create a snapshot on every nth event
+      nth-event: 10
+  subscriptions:
+    enabled: true
+    polling-initial-delay: PT1S
+    polling-interval: PT1S

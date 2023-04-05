@@ -1,0 +1,44 @@
+@startuml
+
+scale max 1024 width
+scale max 800 height
+
+skinparam defaultTextAlignment center
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+
+skinparam database {
+  BackgroundColor<<PostgreSQL>> #336791
+  FontColor White
+}
+
+component "REST API" as API
+
+component "Command Handler" as CommandHandler #lightblue
+
+component "Scheduled\nEvent Subscription\nProcessor" as ScheduledEventSubscriptionProcessor #lightblue
+
+component "Synchronous\nEvent Handler" as SyncEventHandler #lightblue
+
+component "Asynchronous\nEvent Handler" as AsyncEventHandler #lightblue
+
+component "Projection\nRepository" as Repository #lightgreen
+
+database "Event Store &\nRead Database" as Postgres <<PostgreSQL>>
+
+queue Kafka #White
+
+API -> CommandHandler: **1.** Execute\lcommand
+CommandHandler --> Postgres: **2.** Read aggregate\l& append events
+CommandHandler -> SyncEventHandler: **3.** Handle\lnew events
+SyncEventHandler --> Postgres: **4.** Update\lread model
+API .> Repository: **5.** Execute\lquery
+Repository ...> Postgres: **6.** Query\lprojections
+Scheduler -right-> ScheduledEventSubscriptionProcessor: Every second
+ScheduledEventSubscriptionProcessor -up-> Postgres: **7.** Read\lnew events
+ScheduledEventSubscriptionProcessor -> AsyncEventHandler: **8.** Handle\lnew events
+AsyncEventHandler --> Postgres: **9.** Read aggregate
+AsyncEventHandler -right-> Kafka: **10.** Send\lintegration event
+ScheduledEventSubscriptionProcessor --> Postgres: **11.** Update\lcheckpoint
+
+@enduml

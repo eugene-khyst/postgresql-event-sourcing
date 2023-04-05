@@ -1,0 +1,86 @@
+@startuml
+
+scale max 1024 width
+scale max 800 height
+
+set separator none
+
+package jakarta.persistence {
+
+  annotation Entity
+  annotation Embeddable
+}
+
+package org.springframework.data.domain {
+
+  interface Persistable {
+    getId(): Object
+  	isNew(): boolean
+  }
+}
+
+package com.example.eventsourcing {
+
+  package projection {
+
+    class OrderProjection ##[dotted] {
+      -id: UUID
+      -version: int
+      -status: OrderStatus
+      -riderId: UUID
+      -price: BigDecimal
+      -route: List<WaypointProjection>
+      -driverId: UUID
+      -placedDate: Instant
+      -acceptedDate: Instant
+      -completedDate: Instant
+      -cancelledDate: Instant
+    }
+
+    class WaypointProjection ##[dotted] {
+      -address: String
+      -latitude: double
+      -longitude: double
+    }
+  }
+
+  package dto {
+
+    class OrderDto ##[dotted] {
+      orderId: UUID
+      eventType: String
+      eventTimestamp: long
+      version: int
+      status: OrderStatus
+      riderId: UUID
+      price: BigDecimal
+      route: List<WaypointDto>
+      driverId: UUID
+    }
+
+    class WaypointDto ##[dotted] {
+      address: String
+      latitude: double
+      longitude: double
+    }
+
+    enum OrderStatus ##[dotted] {
+      PLACED
+      ADJUSTED
+      ACCEPTED
+      COMPLETED
+      CANCELLED
+    }
+  }
+}
+
+Persistable <|.. OrderProjection
+OrderProjection *-- WaypointProjection
+OrderProjection o-- OrderStatus
+OrderProjection ..> Entity
+WaypointProjection ..> Embeddable
+
+OrderDto o-- WaypointDto
+OrderDto o-- OrderStatus
+
+@enduml

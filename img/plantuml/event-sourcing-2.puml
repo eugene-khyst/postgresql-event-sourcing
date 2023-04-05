@@ -1,0 +1,34 @@
+@startuml
+
+scale max 1024 width
+scale max 800 height
+
+skinparam defaultTextAlignment center
+skinparam componentStyle rectangle
+
+component "Order Service" as os1
+component tbl [
+**ORDER** Table
+|= ""ID"" |= ""VERSION"" |= ""STATUS"" |= ""RIDER_ID"" |= ""ROUTE"" |= ""DRIVER_ID"" |
+| ... | ... | ... | ... | ... | ... |
+| 123 | 3 | COMPLETED | 234 | [...] | 345 |
+| ... | ... | ... | ... | ... | ... |
+]
+
+component "Order Service" as os2
+component es [
+**Event Store**
+|_<u>Order 122</u>
+  |_...
+|_<u>Order 123</u>
+  |_v1 OrderPlacedEvent
+  |_v2 OrderAcceptedEvent
+  |_v3 OrderCompletedEvent
+|_<u>Order 124</u>
+  |_...
+]
+
+os1 --> tbl: INSERT\lUPDATE\lDELETE
+os2 --> es: Append events\lRead events\lSubscribe to events
+
+@enduml

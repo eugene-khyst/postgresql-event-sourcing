@@ -1,9 +1,0 @@
-{
-  "plantuml.exportFormat": "png",
-  "plantuml.exportSubFolder": false,
-  "plantuml.exportOutDir": "img",
-  "plantuml.render": "PlantUMLServer",
-  "plantuml.server": "http://localhost:18181/",
-  // docker run --rm -p 18181:8080 plantuml/plantuml-server:tomcat
-  "auto-rename-tag.activationOnLanguage": ["html", "xml"]
-}

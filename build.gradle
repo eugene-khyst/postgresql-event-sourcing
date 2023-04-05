@@ -1,12 +1,16 @@
 plugins {
-    id 'org.springframework.boot' version "${spring_boot_version}"
-    id 'io.spring.dependency-management' version "${spring_dependency_management_version}"
-    id 'com.google.cloud.tools.jib' version "${jib_version}"
     id 'java'
+    id 'org.springframework.boot' version '3.0.4'
+    id 'io.spring.dependency-management' version '1.1.0'
 }
 
 group = 'com.example'
+version = '2.0.0'
 sourceCompatibility = '17'
+
+repositories {
+    mavenCentral()
+}
 
 configurations {
     compileOnly {
@@ -14,34 +18,42 @@ configurations {
     }
 }
 
-repositories {
-    mavenCentral()
-}
-
-jib {
-    to {
-        image = "evgeniy-khyst/${project.name}:${project.version}"
-    }
+ext {
+    set('postgresql_version', '42.5.4')
+    set('mapstruct_version', '1.5.3.Final')
+    set('lombok_mapstruct_binding_version', '0.2.0')
+    set('testcontainers_version', '1.17.6')
 }
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.kafka:spring-kafka'
 
     implementation "org.postgresql:postgresql:${postgresql_version}"
     implementation "org.mapstruct:mapstruct:${mapstruct_version}"
 
-    runtimeOnly 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-core'
 
     compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
     annotationProcessor "org.projectlombok:lombok-mapstruct-binding:${lombok_mapstruct_binding_version}"
     annotationProcessor "org.mapstruct:mapstruct-processor:${mapstruct_version}"
-    annotationProcessor 'org.projectlombok:lombok'
 
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.kafka:spring-kafka-test'
-    testRuntimeOnly 'com.h2database:h2'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:kafka'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.testcontainers:testcontainers-bom:${testcontainers_version}"
+    }
 }
 
 test {

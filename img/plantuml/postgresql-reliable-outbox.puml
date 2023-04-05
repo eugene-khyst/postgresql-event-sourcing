@@ -1,0 +1,57 @@
+@startuml
+
+scale max 1024 width
+scale max 1100 height
+
+skinparam sequence {
+  LifeLineBorderColor Grey
+'  LifeLineBackgroundColor LightGrey
+}
+
+participant "Append Event\nTransaction #1" as tx1
+participant "Append Event\nTransaction #2" as tx2
+database "PostgreSQL" as db
+participant "Read Events\nAfter Checkpoint\nTransaction #3" as tx3
+participant "Read Events\nAfter Checkpoint\nTransaction #4" as tx4
+
+tx1 --> db: ""BEGIN TRANSACTION""
+activate tx1
+note over tx1: ""pg_current_xact_id()=851""
+tx1 --> db: ""SELECT nextval('ES_EVENT_ID_SEQ')""
+db --> tx1: //nextval=101//
+tx2 --> db: ""BEGIN TRANSACTION""
+activate tx2
+note over tx2: ""pg_current_xact_id()=852""
+tx2 --> db: ""SELECT nextval('ES_EVENT_ID_SEQ')""
+db --> tx2: //nextval=102//
+|||
+tx1 --> db: ""INSERT INTO ES_EVENT(ID, TRANSACTION_ID, ...)""\n""VALUES(101, 851, ...)""
+tx2 --> db: ""INSERT INTO ES_EVENT(ID, TRANSACTION_ID, ...)""\n""VALUES(102, 852, ...)""
+tx2 --> db: ""COMMIT""
+deactivate tx2
+tx3 --> db: ""BEGIN TRANSACTION""
+activate tx3
+note over tx3: ""pg_current_xact_id()=853""\n""pg_snapshot_xmin(pg_current_snapshot()=851""
+tx3 --> db: ""SELECT LAST_TRANSACTION_ID, LAST_EVENT_ID""\n""FROM ES_EVENT_SUBSCRIPTION""
+db --> tx3: //LAST_TRANSACTION_ID=850//\n//LAST_EVENT_ID=100//
+tx3 --> db: ""SELECT ID FROM ES_EVENT""\n""WHERE (TRANSACTION_ID, ID) > (850, 100)""\n""AND TRANSACTION_ID < 851""
+db --> tx3: //No rows//
+tx1 --> db: ""COMMIT""
+note over tx3: Event with ID=102 has TRANSACTION_ID=852 (> 851)
+deactivate tx1
+tx3 --> db: ""COMMIT""
+deactivate tx3
+|||
+tx4 --> db: ""BEGIN TRANSACTION""
+activate tx4
+note over tx4: ""pg_current_xact_id()=854""\n""pg_snapshot_xmin(pg_current_snapshot()=854""
+tx4 --> db: ""SELECT LAST_TRANSACTION_ID, LAST_EVENT_ID""\n""FROM ES_EVENT_SUBSCRIPTION""
+db --> tx4: //LAST_TRANSACTION_ID=850//\n//LAST_EVENT_ID=100//
+tx4 --> db: ""SELECT ID FROM ES_EVENT""\n""WHERE (TRANSACTION_ID, ID) > (850, 100)""\n""AND TRANSACTION_ID < 854""
+db --> tx4: //ID=101, ID=102//
+note over tx4: Process events: ID=101, ID=102
+tx4 --> db: ""UPDATE ES_EVENT_SUBSCRIPTION""\n""SET LAST_TRANSACTION_ID=852, LAST_EVENT_ID = 102""
+tx4 --> db: ""COMMIT""
+deactivate tx4
+
+@enduml
