@@ -1,0 +1,74 @@
+@startuml
+
+hide circle
+
+scale max 1024 width
+scale max 800 height
+
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+package "Domain Model" #line.dashed {
+  entity "**ES_AGGREGATE**" {
+    + ""ID"": //uuid [PK]//
+    --
+    *""VERSION"": //integer //
+    *""AGGREGATE_TYPE"": //text //
+  }
+
+  entity "**ES_AGGREGATE_SNAPSHOT**" {
+    + ""AGGREGATE_ID"": //uuid [PK][FK]//
+    + ""VERSION"": //integer [PK]//
+    --
+    *""JSON_DATA"": //json //
+  }
+
+  entity "**ES_EVENT**" {
+    + ""ID"": //bigserial [PK]//
+    --
+    *""TRANSACTION_ID"": //xid8 //
+    *""AGGREGATE_ID"": //uuid [FK]//
+    *""VERSION"": //integer //
+    *""EVENT_TYPE"": //text //
+    *""JSON_DATA"": //json //
+  }
+
+  entity "**ES_EVENT_SUBSCRIPTION**" {
+    + ""SUBSCRIPTION_NAME"": //text [PK]//
+    --
+    *""LAST_TRANSACTION_ID"": //xid8 //
+    *""LAST_EVENT_ID"": //bigint //
+  }
+}
+
+package "Read Model" #line.dashed {
+  entity "**RM_ORDER**" ##[dotted] {
+    + ""ID"": //uuid [PK]//
+    --
+    *""VERSION"": //integer //
+    *""STATUS"": //text //
+    *""RIDER_ID"": //uuid //
+    *""PRICE"": //numeric(19,2) //
+    *""DRIVER_ID"": //uuid //
+    *""PLACED_DATE"": //timestamp without time zone //
+    *""ACCEPTED_DATE"": //timestamp without time zone //
+    *""CANCELLED_DATE"": //timestamp without time zone //
+    *""COMPLETED_DATE"": //timestamp without time zone //
+  }
+
+  entity "**RM_ORDER_ROUTE**" ##[dotted] {
+    + ""ORDER_ID"": //uuid [PK][FK]//
+    + ""ADDRESS"": //text [PK]//
+    --
+    *""LATITUDE"": //double precision //
+    *""LONGITUDE"": //double precision //
+  }
+}
+
+"**ES_AGGREGATE_SNAPSHOT**" }-- "**ES_AGGREGATE**"
+
+"**ES_EVENT**" }-- "**ES_AGGREGATE**"
+
+"**RM_ORDER_ROUTE**" }-- "**RM_ORDER**"
+
+@enduml

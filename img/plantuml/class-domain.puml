@@ -1,0 +1,170 @@
+@startuml
+
+scale max 1024 width
+scale max 1100 height
+
+set separator none
+
+package com.example.eventsourcing {
+
+  package domain {
+
+    abstract class Aggregate {
+      #aggregateId: UUID
+      #changes: List<Event>
+      #version: int
+      #baseVersion: int
+      {abstract} +getAggregateType(): AggregateType
+      +loadFromHistory(List<Event>): void
+      +process(Command): void
+      #getNextVersion(): int
+      #applyChange(Event): void
+      -apply(Event): void
+      -invoke(Object, String): void
+    }
+
+    class OrderAggregate ##[dotted] {
+      -status: OrderStatus
+      -riderId: UUID
+      -price: BigDecimal
+      -route: List<WaypointDto>
+      -driverId: UUID
+      -placedDate: Instant
+      -acceptedDate: Instant
+      -completedDate: Instant
+      -cancelledDate: Instant
+    }
+
+    enum AggregateType {
+      ORDER
+      +getAggregateClass(): Class
+      +newInstance(UUID): Aggregate
+    }
+
+    package command {
+
+      class Command {
+        #aggregateType: AggregateType
+        #aggregateId: UUID
+      }
+
+      class PlaceOrderCommand ##[dotted] {
+        -riderId: UUID
+        -price: BigDecimal
+        -route: List<WaypointDto>
+      }
+
+      class AdjustOrderPriceCommand ##[dotted] {
+        -newPrice: BigDecimal
+      }
+
+      class AcceptOrderCommand ##[dotted] {
+        -driverId: UUID
+      }
+
+      class CompleteOrderCommand ##[dotted] {
+      }
+
+      class CancelOrderCommand ##[dotted] {
+      }
+    }
+
+    package event {
+
+      class Event {
+        #aggregateId: UUID
+        #version: int
+        #createdDate: Instant
+        #eventType: EventType
+      }
+
+      class OrderPlacedEvent ##[dotted] {
+        -riderId: UUID
+        -price: BigDecimal
+        -route: List<WaypointDto>
+      }
+
+      class OrderPriceAdjustedEvent ##[dotted] {
+        -newPrice: BigDecimal
+      }
+
+      class OrderAcceptedEvent ##[dotted] {
+        -driverId: UUID
+      }
+
+      class OrderCompletedEvent ##[dotted] {
+      }
+
+      class OrderCancelledEvent ##[dotted] {
+      }
+
+      together {
+
+        class EventSubscriptionCheckpoint {
+          lastProcessedTransactionId: BigInteger
+          lastProcessedEventId: long
+        }
+
+        class EventWithId {
+          id: long
+          transactionId: BigInteger
+          event: Event
+        }
+      }
+
+      enum EventType {
+        ORDER_PLACED
+        ORDER_PRICE_ADJUSTED
+        ORDER_ACCEPTED
+        ORDER_COMPLETED
+        ORDER_CANCELLED
+        {static} +fromClass(Class): EventType
+        +getEventClass(): Class
+      }
+    }
+  }
+
+  package dto {
+
+    class WaypointDto ##[dotted] {
+      address: String
+      latitude: double
+      longitude: double
+    }
+
+    enum OrderStatus ##[dotted] {
+      PLACED
+      ADJUSTED
+      ACCEPTED
+      COMPLETED
+      CANCELLED
+    }
+  }
+}
+
+Aggregate o-- AggregateType
+Aggregate .left.> Command
+Aggregate .right.> Event
+Aggregate <|-- OrderAggregate
+
+OrderAggregate o--- WaypointDto
+OrderAggregate o--- OrderStatus
+
+Command o--- AggregateType
+
+Command <|-up- PlaceOrderCommand
+Command <|-up- AdjustOrderPriceCommand
+Command <|-up- AcceptOrderCommand
+Command <|--right- CompleteOrderCommand
+Command <|--left- CancelOrderCommand
+
+Event <|--up- OrderPlacedEvent
+Event <|-up- OrderPriceAdjustedEvent
+Event <|-up- OrderAcceptedEvent
+Event <|-right- OrderCompletedEvent
+Event <|--left- OrderCancelledEvent
+
+Event o-- EventType
+EventWithId o-up- Event
+
+@enduml

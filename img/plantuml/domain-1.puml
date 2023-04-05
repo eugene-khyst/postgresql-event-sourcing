@@ -1,0 +1,19 @@
+@startuml
+
+left to right direction
+
+scale max 1024 width
+scale max 800 height
+
+actor Rider
+actor Driver
+
+rectangle Order {
+  Rider --> (Place order)
+  Rider --> (Adjust order price)
+  Rider --> (Cancel order)
+  (Accept order) <-- Driver
+  (Complete order) <-- Driver
+}
+
+@enduml

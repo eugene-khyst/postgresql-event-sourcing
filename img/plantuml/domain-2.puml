@@ -1,0 +1,18 @@
+@startuml
+
+left to right direction
+
+scale max 1024 width
+scale max 800 height
+
+[*] -> Placed : Place order
+Placed --> Adjusted : Adjust order price
+Placed --> Accepted : Accept order
+Placed --> Cancelled : Cancel order
+Adjusted --> Adjusted : Adjust order price
+Adjusted --> Accepted : Accept order
+Adjusted --> Cancelled : Cancel order
+Accepted --> Completed : Complete order
+Completed -> [*]
+
+@enduml

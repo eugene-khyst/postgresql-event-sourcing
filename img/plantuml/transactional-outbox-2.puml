@@ -1,0 +1,55 @@
+@startuml
+
+scale max 1024 width
+scale max 800 height
+
+skinparam defaultTextAlignment center
+skinparam componentStyle rectangle
+
+skinparam database {
+  BorderColor Grey
+}
+
+component "Order Service" as orderService
+
+database "Database" as db {
+
+  rectangle "Transaction" #line.dashed {
+
+    component aggregateTbl [
+    **ES_AGGREGATE** Table
+    |= ""ID"" |= ""VERSION"" |      |      |      |
+    |      |      |      |      |      |
+    |      |      |      |      |      |
+    ]
+
+    component eventTbl [
+    **ES_EVENT** Table
+    |= ""ID"" |      |      |      |      |
+    |   1   |      |      |      |      |
+    |   2   |      |      |      |      |
+    |   3   |      |      |      |      |
+    ]
+  }
+
+  component subscriptionTbl [
+  **ES_EVENT_SUBSCRIPTION** Table
+  |= ""SUBSCRIPTION_NAME"" |= ""LAST_TRANSACTION_ID"" |= ""LAST_EVENT_ID"" |
+  | OrderIntegrationEventSender | 850 | 2 |
+  |      |      |      |
+  ]
+}
+
+component "Polling\nPublisher" as pollingPublisher
+component "Message\nBroker" as messageBroker
+
+eventTbl -[hidden]down-> subscriptionTbl
+
+orderService -down-> aggregateTbl: **1.** UPDATE\lversion
+orderService -down-> eventTbl: **2.** INSERT
+pollingPublisher -left-> subscriptionTbl: **3.** Acquire lock and read\l""LAST_TRANSACTION_ID""\land ""LAST_EVENT_ID""
+pollingPublisher --> eventTbl: **4.** Read ""ES_EVENT"" table
+pollingPublisher -> messageBroker: **5.** Publish\lmessage
+pollingPublisher --> subscriptionTbl: **6.** Update\l""LAST_TRANSACTION_ID""\land ""LAST_EVENT_ID""
+
+@enduml

@@ -1,0 +1,164 @@
+@startuml
+
+scale max 1024 width
+scale max 1100 height
+
+set separator none
+
+package org.springframework.data.jpa.repository {
+  interface JpaRepository
+}
+
+package com.example.eventsourcing {
+
+  package repository {
+
+    interface OrderProjectionRepository ##[dotted]
+
+    class AggregateRepository {
+      +createAggregateIfAbsent(AggregateType, UUID)
+      +checkAndUpdateAggregateVersion(UUID, int, int): boolean
+      +createAggregateSnapshot(Aggregate): void
+      +readAggregateSnapshot(UUID, Integer): Optional<Aggregate>
+    }
+
+    class EventRepository {
+      +appendEvent(Event): EventWithId
+      +readEvents(UUID, Integer, Integer): List<EventWithId>
+      +readEventsAfterCheckpoint(AggregateType, BigInteger, long): List<EventWithId>
+    }
+
+    class EventSubscriptionRepository {
+      +createSubscriptionIfAbsent(String): void
+      +readCheckpointAndLockSubscription(String): Optional<EventSubscriptionCheckpoint>
+      +updateEventSubscription(String, BigInteger, long): boolean
+    }
+  }
+
+  package service {
+
+    class AggregateStore {
+      -aggregateRepository: AggregateRepository
+      -eventRepository: EventRepository
+      +saveAggregate(Aggregate): List<EventWithId>
+      +readAggregate(AggregateType, UUID): Aggregate
+      +readAggregate(AggregateType, UUID, Integer): Aggregate
+    }
+
+    class CommandProcessor {
+      -aggregateStore: AggregateStore
+      -commandHandlers: List<CommandHandler>
+      -defaultCommandHandler: DefaultCommandHandler
+      -aggregateChangesHandlers: List<SyncEventHandler>
+      +process(Command): Aggregate
+    }
+
+    class EventSubscriptionProcessor {
+      -subscriptionRepository: EventSubscriptionRepository
+      -eventRepository: EventRepository
+      +processNewEvents(AsyncEventHandler): void
+    }
+
+    class ScheduledEventSubscriptionProcessor {
+      -eventHandlers: List<AsyncEventHandler>
+      -eventSubscriptionProcessor: EventSubscriptionProcessor
+      +processNewEvents(): void
+    }
+
+    package command {
+
+      interface CommandHandler {
+        handle(Aggregate, Command): void
+        getCommandType(): Class
+      }
+
+      class DefaultCommandHandler ##[dotted]
+
+      class PlaceOrderCommandHandler ##[dotted]
+    }
+
+    package event {
+
+      interface SyncEventHandler {
+        handleEvents(List<EventWithId>, Aggregate): void
+        getAggregateType(): AggregateType
+      }
+
+      interface AsyncEventHandler {
+        handleEvent(EventWithId): void
+        getAggregateType(): AggregateType
+        getSubscriptionName(): String
+      }
+
+      class OrderProjectionUpdater ##[dotted] {
+        -repository: OrderProjectionRepository
+        -mapper: OrderMapper
+        -updateOrderProjection(OrderAggregate): void
+      }
+
+      class OrderIntegrationEventSender ##[dotted] {
+        -aggregateStore: AggregateStore
+        -orderMapper: OrderMapper
+        -sendDataToKafka(OrderDto): void
+      }
+    }
+  }
+
+  package mapper {
+
+    interface OrderMapper ##[dotted] {
+      toProjection(OrderAggregate): OrderProjection
+      toDto(Event, OrderAggregate): OrderDto
+    }
+
+    class OrderMapperImpl ##[dotted]
+  }
+
+  package controller {
+
+    class OrdersController ##[dotted] {
+      -commandProcessor: CommandProcessor
+      -orderProjectionRepository: OrderProjectionRepository
+      +placeOrder(JsonNode): ResponseEntity<JsonNode>
+      +modifyOrder(UUID, JsonNode): ResponseEntity<Object>
+      +getOrders(): ResponseEntity<List<OrderProjection>>
+      +getOrder(UUID): ResponseEntity<OrderProjection>
+    }
+  }
+}
+
+JpaRepository <|-up-- OrderProjectionRepository
+
+SyncEventHandler <|.. OrderProjectionUpdater
+
+AsyncEventHandler <|.. OrderIntegrationEventSender
+
+CommandHandler <|.. DefaultCommandHandler
+CommandHandler <|.. PlaceOrderCommandHandler
+
+OrderMapper <|.. OrderMapperImpl
+
+OrdersController o-- CommandProcessor
+OrdersController o-- OrderProjectionRepository
+
+AggregateStore o-- AggregateRepository
+AggregateStore o-- EventRepository
+
+EventSubscriptionProcessor o-- EventSubscriptionRepository
+EventSubscriptionProcessor o-- EventRepository
+
+ScheduledEventSubscriptionProcessor o-- EventSubscriptionProcessor
+ScheduledEventSubscriptionProcessor o-- AsyncEventHandler
+
+CommandProcessor o-- AggregateStore
+CommandProcessor o-- CommandHandler
+CommandProcessor o-- DefaultCommandHandler
+CommandProcessor o-- SyncEventHandler
+
+OrderProjectionUpdater o-- OrderProjectionRepository
+OrderProjectionUpdater o-up- OrderMapper
+
+OrderIntegrationEventSender o-- AggregateStore
+OrderIntegrationEventSender o-up- OrderMapper
+
+@enduml
