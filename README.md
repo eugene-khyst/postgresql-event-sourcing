@@ -44,7 +44,7 @@ An audit trail may be a regulatory or business requirement.
 
 We can store all changes to the domain object state as a sequence of events in an append-only event stream.
 Thus, event streams will contain an entire history of changes.
-But how can we be sure that this history is authentic and free from errors?
+But how can we be sure that this history is authentic and error-free?
 We can use event streams as a primary source of truth in a system.
 To get the current state of an object, we have to replay all events in the order of occurrence.
 This pattern is called event sourcing. The database for storing the event streams is called even store.
@@ -91,7 +91,7 @@ This sample uses a simplified domain model of the ride-hailing system.
 ### <a id="3-1"></a>State-oriented persistence
 
 State-oriented persistence (CRUD) applications store only the latest version of an entity.
-Entities are presented by database records.
+Database records present entities.
 When an entity is updated, the corresponding database record gets updated too.
 SQL `INSERT`, `UPDATE` and `DELETE` statements are used.
 
@@ -109,7 +109,7 @@ Events are immutables, so SQL `UPDATE` and `DELETE` statements are not used.
 
 ![Event sourcing](img/event-sourcing-2.svg)
 
-Current state of an entity can be restored by replaying all its events.
+The current state of an entity can be restored by replaying all its events.
 
 Event sourcing is closely related to domain-driven design (DDD) and shares some terminology.
 
@@ -118,14 +118,14 @@ An entity in event sourcing is called an **aggregate**.
 A sequence of events for the same aggregate is called a **stream**.
 
 Event sourcing is best suited for short-living entities with a small total number of
-events (e.g. orders).
+events (e.g., orders).
 
 Restoring the state of the short-living entity by replaying all its events doesn't have any
 performance impact. Thus, no optimizations for restoring state are required for short-living
 entities.
 
-For endlessly stored entities (e.g. users, bank accounts) with thousands of events restoring state
-by replaying all events is not optimal and snapshotting should be considered.
+For endlessly stored entities (e.g., users, bank accounts) with thousands of events restoring state
+by replaying all events is not optimal, and snapshotting should be considered.
 
 ### <a id="3-3"></a>Snapshotting
 
@@ -144,8 +144,8 @@ To restore an aggregate state:
 
 ### <a id="3-4"></a>Querying the data
 
-It's easy to find an aggregate by ID but other queries are difficult.
-As far as aggregates are stored as append-only lists of immutable events,
+It's easy to find an aggregate by ID, but other queries are difficult.
+Since aggregates are stored as append-only lists of immutable events,
 querying the data using SQL, as we used to, is impossible.
 To find an aggregate by some field, we need to first read all the events and replay them to restore all the aggregates.
 
@@ -174,8 +174,8 @@ A command generates zero or more events or results in an error.
 ![CQRS](img/cqrs-1.svg)
 
 CQRS is a self-sufficient architectural pattern and doesn't require event sourcing.
-But in practice event sourcing is usually used in conjunction with CQRS.
-Event store is used as a write database and SQL or NoSQL database as a read database.
+But in practice, event sourcing is usually used in conjunction with CQRS.
+Event store is used as a write database, and SQL or NoSQL database as a read database.
 
 ![CQRS with event sourcing](img/cqrs-2.svg)
 
@@ -186,7 +186,7 @@ Event processing is done by **event handles**.
 As a part of event processing, we may need to update projections,
 send a message to a message broker, or make an API call.
 
-There are 2 types of event handles: **synchronous** and **asynchronous**.
+There are two types of event handles: **synchronous** and **asynchronous**.
 
 Storing the write model and read model in the same database allows for transactional updates of the read model.
 Each time we append a new event, the projection is updated **synchronously** in the same transaction.
@@ -218,7 +218,7 @@ The integration event represents the current state of an aggregate, not just cha
 
 ### <a id="3-9"></a>Advantages of event sourcing
 
-* Having a true history of the system (audit and traceability).
+* A true history of the system (audit and traceability).
   An industry standard for implementing audit trail.
 * Ability to put the system in any prior state (e.g. for debugging).
 * New read-side projections can be created as needed (later) from events.
@@ -360,7 +360,7 @@ and processes them:
      WHERE SUBSCRIPTION_NAME = :subscriptionName
        FOR UPDATE SKIP LOCKED
     ```
-2. fetch new events
+2. read new events
     ```sql
     SELECT e.ID,
            e.TRANSACTION_ID::text,
@@ -391,11 +391,11 @@ The `ID` column of the `ES_EVENT` table is of type `BIGSERIAL`.
 It's a notational convenience for creating ID columns having their default values assigned from a `SEQUENCE` generator.
 
 PostgreSQL sequences can't be rolled back.
-`SELECT nextval('ES_EVENT_ID_SEQ')` increments the sequence value and returns it.
+`SELECT nextval('ES_EVENT_ID_SEQ')` increments and returns the sequence value.
 Even if the transaction is not yet committed, the new sequence value becomes visible to other transactions. 
 
 If transaction #2 started after transaction #1 but committed first,
-the event subscription processor can fetch the events created by transaction #2, update the last processed event ID,
+the event subscription processor can read the events created by transaction #2, update the last processed event ID,
 and thus lose the events created by transaction #1.
 
 ![PostgreSQL naive transactional outbox](img/postgresql-naive-outbox.svg)
@@ -450,7 +450,7 @@ from the Spring Integration.
 After restarting the backend, existing subscriptions will only process new events after the last processed event 
 and not everything from the first one.
 
-New subscriptions (event handlers) in the first poll will fetch and process all events.
+New subscriptions (event handlers) in the first poll will read and process all events.
 Be careful, if there are too many events, they may take a long time to process.
 
 ### <a id="4-9"></a>Class diagrams
@@ -479,7 +479,7 @@ Using PostgreSQL as an event store has a lot of advantages, but there are also d
    Integration events are delivered with **at-least-once** delivery guarantee.
    The exactly-once delivery guarantee is hard to achieve due to a dual-write.
    A dual-write describes a situation when you need to atomically update the database and publish messages
-   and two-phase commit (2PC) is not an option.
+   without two-phase commit (2PC).
    Consumers of integration events should be idempotent and filter duplicates and unordered events.
 2. The asynchronous event handling results in the **eventual consistency between the write model and sent integration events**.
    The polling database table for new events with a fixed delay introduces a full consistency lag 
