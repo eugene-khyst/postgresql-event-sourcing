@@ -35,8 +35,8 @@ tx3 --> db: ""SELECT LAST_EVENT_ID""\n""FROM ES_EVENT_SUBSCRIPTION""
 db --> tx3: //LAST_EVENT_ID=100//
 tx3 --> db: ""SELECT ID FROM ES_EVENT""\n""WHERE ID > 100""
 db --> tx3: //ID=102//
-tx1 --> db: ""COMMIT""
 note over tx3: Process event with ID=102
+tx1 --> db: ""COMMIT""
 deactivate tx1
 tx3 --> db: ""UPDATE ES_EVENT_SUBSCRIPTION""\n""SET LAST_EVENT_ID = 102""
 tx3 --> db: ""COMMIT""

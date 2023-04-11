@@ -36,8 +36,8 @@ tx3 --> db: ""SELECT LAST_TRANSACTION_ID, LAST_EVENT_ID""\n""FROM ES_EVENT_SUBSC
 db --> tx3: //LAST_TRANSACTION_ID=850//\n//LAST_EVENT_ID=100//
 tx3 --> db: ""SELECT ID FROM ES_EVENT""\n""WHERE (TRANSACTION_ID, ID) > (850, 100)""\n""AND TRANSACTION_ID < 851""
 db --> tx3: //No rows//
+note over tx3: No eligible events,\nevent with ID=102 has TRANSACTION_ID=852 (> 851)
 tx1 --> db: ""COMMIT""
-note over tx3: Event with ID=102 has TRANSACTION_ID=852 (> 851)
 deactivate tx1
 tx3 --> db: ""COMMIT""
 deactivate tx3
