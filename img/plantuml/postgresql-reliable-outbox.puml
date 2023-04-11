@@ -31,7 +31,7 @@ tx2 --> db: ""COMMIT""
 deactivate tx2
 tx3 --> db: ""BEGIN TRANSACTION""
 activate tx3
-note over tx3: ""pg_current_xact_id()=853""\n""pg_snapshot_xmin(pg_current_snapshot()=851""
+note over tx3: ""pg_current_xact_id()=853""\n""pg_snapshot_xmin(pg_current_snapshot())=851""
 tx3 --> db: ""SELECT LAST_TRANSACTION_ID, LAST_EVENT_ID""\n""FROM ES_EVENT_SUBSCRIPTION""
 db --> tx3: //LAST_TRANSACTION_ID=850//\n//LAST_EVENT_ID=100//
 tx3 --> db: ""SELECT ID FROM ES_EVENT""\n""WHERE (TRANSACTION_ID, ID) > (850, 100)""\n""AND TRANSACTION_ID < 851""
