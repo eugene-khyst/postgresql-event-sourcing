@@ -4,11 +4,9 @@ import com.example.eventsourcing.domain.AggregateType;
 import com.example.eventsourcing.domain.event.Event;
 import com.example.eventsourcing.domain.event.EventType;
 import com.example.eventsourcing.domain.event.EventWithId;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nullable;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import org.postgresql.util.PGobject;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -26,30 +24,37 @@ import java.util.UUID;
 
 @Transactional(propagation = Propagation.MANDATORY)
 @Repository
-@RequiredArgsConstructor
 public class EventRepository {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
 
-    @SneakyThrows
-    public <T extends Event> EventWithId<T> appendEvent(@NonNull Event event) {
-        List<EventWithId<T>> result = jdbcTemplate.query("""
-                        INSERT INTO ES_EVENT (TRANSACTION_ID, AGGREGATE_ID, VERSION, EVENT_TYPE, JSON_DATA)
-                        VALUES(pg_current_xact_id(), :aggregateId, :version, :eventType, :jsonObj::json)
-                        RETURNING ID, TRANSACTION_ID::text, EVENT_TYPE, JSON_DATA
-                        """,
-                Map.of(
-                        "aggregateId", event.getAggregateId(),
-                        "version", event.getVersion(),
-                        "eventType", event.getEventType().toString(),
-                        "jsonObj", objectMapper.writeValueAsString(event)
-                ),
-                this::toEvent);
-        return result.get(0);
+    public EventRepository(NamedParameterJdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.objectMapper = objectMapper;
     }
 
-    public List<EventWithId<Event>> readEvents(@NonNull UUID aggregateId,
+    public <T extends Event> EventWithId<T> appendEvent(Event event) {
+        try {
+            List<EventWithId<T>> result = jdbcTemplate.query("""
+                            INSERT INTO ES_EVENT (TRANSACTION_ID, AGGREGATE_ID, VERSION, EVENT_TYPE, JSON_DATA)
+                            VALUES(pg_current_xact_id(), :aggregateId, :version, :eventType, :jsonObj::json)
+                            RETURNING ID, TRANSACTION_ID::text, EVENT_TYPE, JSON_DATA
+                            """,
+                    Map.of(
+                            "aggregateId", event.getAggregateId(),
+                            "version", event.getVersion(),
+                            "eventType", event.getEventType().toString(),
+                            "jsonObj", objectMapper.writeValueAsString(event)
+                    ),
+                    this::toEvent);
+            return result.get(0);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public List<EventWithId<Event>> readEvents(UUID aggregateId,
                                                @Nullable Integer fromVersion,
                                                @Nullable Integer toVersion) {
         MapSqlParameterSource parameters = new MapSqlParameterSource();
@@ -72,8 +77,8 @@ public class EventRepository {
                 this::toEvent);
     }
 
-    public List<EventWithId<Event>> readEventsAfterCheckpoint(@NonNull AggregateType aggregateType,
-                                                              @NonNull BigInteger lastProcessedTransactionId,
+    public List<EventWithId<Event>> readEventsAfterCheckpoint(AggregateType aggregateType,
+                                                              BigInteger lastProcessedTransactionId,
                                                               long lastProcessedEventId) {
         return jdbcTemplate.query("""
                         SELECT e.ID,
@@ -96,14 +101,17 @@ public class EventRepository {
     }
 
     @SuppressWarnings("unchecked")
-    @SneakyThrows
     private <T extends Event> EventWithId<T> toEvent(ResultSet rs, int rowNum) throws SQLException {
         long id = rs.getLong("ID");
         String transactionId = rs.getString("TRANSACTION_ID");
         EventType eventType = EventType.valueOf(rs.getString("EVENT_TYPE"));
         PGobject jsonObj = (PGobject) rs.getObject("JSON_DATA");
         String json = jsonObj.getValue();
-        Event event = objectMapper.readValue(json, eventType.getEventClass());
-        return new EventWithId<>(id, new BigInteger(transactionId), (T) event);
+        try {
+            Event event = objectMapper.readValue(json, eventType.getEventClass());
+            return new EventWithId<>(id, new BigInteger(transactionId), (T) event);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

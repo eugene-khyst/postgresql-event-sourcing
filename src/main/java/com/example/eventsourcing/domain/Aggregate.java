@@ -3,11 +3,7 @@ package com.example.eventsourcing.domain;
 import com.example.eventsourcing.domain.command.Command;
 import com.example.eventsourcing.domain.event.Event;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import lombok.Getter;
-import lombok.NonNull;
-import lombok.SneakyThrows;
-import lombok.ToString;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -15,11 +11,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-@Getter
-@ToString
-@Slf4j
 public abstract class Aggregate {
 
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(Aggregate.class);
     protected final UUID aggregateId;
     @JsonIgnore
     protected final List<Event> changes = new ArrayList<>();
@@ -28,7 +22,7 @@ public abstract class Aggregate {
     @JsonIgnore
     protected int baseVersion;
 
-    protected Aggregate(@NonNull UUID aggregateId, int version) {
+    protected Aggregate(UUID aggregateId, int version) {
         this.aggregateId = aggregateId;
         this.baseVersion = this.version = version;
     }
@@ -75,16 +69,35 @@ public abstract class Aggregate {
         invoke(command, "process");
     }
 
-    @SneakyThrows(InvocationTargetException.class)
     private void invoke(Object o, String methodName) {
         try {
             Method method = this.getClass().getMethod(methodName, o.getClass());
             method.invoke(this, o);
-        } catch (NoSuchMethodException | IllegalAccessException e) {
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             throw new UnsupportedOperationException(
                     "Aggregate %s doesn't support %s(%s)".formatted(
                             this.getClass(), methodName, o.getClass().getSimpleName()),
                     e);
         }
+    }
+
+    public UUID getAggregateId() {
+        return this.aggregateId;
+    }
+
+    public List<Event> getChanges() {
+        return this.changes;
+    }
+
+    public int getVersion() {
+        return this.version;
+    }
+
+    public int getBaseVersion() {
+        return this.baseVersion;
+    }
+
+    public String toString() {
+        return "Aggregate(aggregateId=" + this.getAggregateId() + ", changes=" + this.getChanges() + ", version=" + this.getVersion() + ", baseVersion=" + this.getBaseVersion() + ")";
     }
 }

@@ -1,14 +1,11 @@
 package com.example.eventsourcing.domain;
 
 import com.example.eventsourcing.domain.command.*;
-import com.example.eventsourcing.error.Error;
 import com.example.eventsourcing.domain.event.*;
 import com.example.eventsourcing.dto.OrderStatus;
 import com.example.eventsourcing.dto.WaypointDto;
+import com.example.eventsourcing.error.Error;
 import com.fasterxml.jackson.annotation.JsonCreator;
-import lombok.Getter;
-import lombok.NonNull;
-import lombok.ToString;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -16,8 +13,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 
-@Getter
-@ToString(callSuper = true)
 public class OrderAggregate extends Aggregate {
 
     private OrderStatus status;
@@ -31,7 +26,7 @@ public class OrderAggregate extends Aggregate {
     private Instant cancelledDate;
 
     @JsonCreator
-    public OrderAggregate(@NonNull UUID aggregateId, int version) {
+    public OrderAggregate(UUID aggregateId, int version) {
         super(aggregateId, version);
     }
 
@@ -122,5 +117,45 @@ public class OrderAggregate extends Aggregate {
     @Override
     public AggregateType getAggregateType() {
         return AggregateType.ORDER;
+    }
+
+    public OrderStatus getStatus() {
+        return this.status;
+    }
+
+    public UUID getRiderId() {
+        return this.riderId;
+    }
+
+    public BigDecimal getPrice() {
+        return this.price;
+    }
+
+    public List<WaypointDto> getRoute() {
+        return this.route;
+    }
+
+    public UUID getDriverId() {
+        return this.driverId;
+    }
+
+    public Instant getPlacedDate() {
+        return this.placedDate;
+    }
+
+    public Instant getAcceptedDate() {
+        return this.acceptedDate;
+    }
+
+    public Instant getCompletedDate() {
+        return this.completedDate;
+    }
+
+    public Instant getCancelledDate() {
+        return this.cancelledDate;
+    }
+
+    public String toString() {
+        return "OrderAggregate(super=" + super.toString() + ", status=" + this.getStatus() + ", riderId=" + this.getRiderId() + ", price=" + this.getPrice() + ", route=" + this.getRoute() + ", driverId=" + this.getDriverId() + ", placedDate=" + this.getPlacedDate() + ", acceptedDate=" + this.getAcceptedDate() + ", completedDate=" + this.getCompletedDate() + ", cancelledDate=" + this.getCancelledDate() + ")";
     }
 }

@@ -1,24 +1,28 @@
 package com.example.eventsourcing.domain;
 
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
-
+import java.lang.reflect.Constructor;
 import java.util.UUID;
 
-@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public enum AggregateType {
 
     ORDER(OrderAggregate.class);
 
-    @Getter
     private final Class<? extends Aggregate> aggregateClass;
 
-    @SneakyThrows(ReflectiveOperationException.class)
-    @SuppressWarnings("unchecked")
+    AggregateType(Class<? extends Aggregate> aggregateClass) {
+        this.aggregateClass = aggregateClass;
+    }
+
     public <T extends Aggregate> T newInstance(UUID aggregateId) {
-        var constructor = aggregateClass.getDeclaredConstructor(UUID.class, Integer.TYPE);
-        return (T) constructor.newInstance(aggregateId, 0);
+        try {
+            Constructor<? extends Aggregate> constructor = aggregateClass.getDeclaredConstructor(UUID.class, Integer.TYPE);
+            return (T) constructor.newInstance(aggregateId, 0);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public Class<? extends Aggregate> getAggregateClass() {
+        return this.aggregateClass;
     }
 }

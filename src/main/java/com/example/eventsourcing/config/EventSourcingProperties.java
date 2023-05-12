@@ -3,7 +3,6 @@ package com.example.eventsourcing.config;
 import com.example.eventsourcing.domain.AggregateType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
-import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.context.annotation.Configuration;
@@ -21,11 +20,14 @@ public class EventSourcingProperties {
 
     @Valid
     @NestedConfigurationProperty
-    @Setter
     private Map<AggregateType, SnapshottingProperties> snapshotting = new EnumMap<>(AggregateType.class);
 
     public SnapshottingProperties getSnapshotting(AggregateType aggregateType) {
         return snapshotting.getOrDefault(aggregateType, NO_SNAPSHOTTING);
+    }
+
+    public void setSnapshotting(@Valid Map<AggregateType, SnapshottingProperties> snapshotting) {
+        this.snapshotting = snapshotting;
     }
 
     public record SnapshottingProperties(

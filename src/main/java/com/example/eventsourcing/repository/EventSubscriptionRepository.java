@@ -1,7 +1,6 @@
 package com.example.eventsourcing.repository;
 
 import com.example.eventsourcing.domain.event.EventSubscriptionCheckpoint;
-import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
@@ -15,10 +14,13 @@ import java.util.Optional;
 
 @Transactional(propagation = Propagation.MANDATORY)
 @Repository
-@RequiredArgsConstructor
 public class EventSubscriptionRepository {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
+
+    public EventSubscriptionRepository(NamedParameterJdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
 
     public void createSubscriptionIfAbsent(String subscriptionName) {
         jdbcTemplate.update("""

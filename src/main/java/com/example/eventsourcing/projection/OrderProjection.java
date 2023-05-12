@@ -3,10 +3,6 @@ package com.example.eventsourcing.projection;
 import com.example.eventsourcing.dto.OrderStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
 import org.springframework.data.domain.Persistable;
 
 import java.io.Serializable;
@@ -19,10 +15,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "RM_ORDER")
-@RequiredArgsConstructor
-@Getter
-@Setter
-@ToString
 public class OrderProjection implements Persistable<UUID>, Serializable {
 
     @Id
@@ -34,13 +26,15 @@ public class OrderProjection implements Persistable<UUID>, Serializable {
     private BigDecimal price;
     @ElementCollection
     @CollectionTable(name = "RM_ORDER_ROUTE", joinColumns = @JoinColumn(name = "ORDER_ID"))
-    @ToString.Exclude
     private List<WaypointProjection> route = new ArrayList<>();
     private UUID driverId;
     private Instant placedDate;
     private Instant acceptedDate;
     private Instant completedDate;
     private Instant cancelledDate;
+
+    public OrderProjection() {
+    }
 
     @JsonIgnore
     @Override
@@ -66,5 +60,97 @@ public class OrderProjection implements Persistable<UUID>, Serializable {
     @Override
     public int hashCode() {
         return 1;
+    }
+
+    public UUID getId() {
+        return this.id;
+    }
+
+    public int getVersion() {
+        return this.version;
+    }
+
+    public OrderStatus getStatus() {
+        return this.status;
+    }
+
+    public UUID getRiderId() {
+        return this.riderId;
+    }
+
+    public BigDecimal getPrice() {
+        return this.price;
+    }
+
+    public List<WaypointProjection> getRoute() {
+        return this.route;
+    }
+
+    public UUID getDriverId() {
+        return this.driverId;
+    }
+
+    public Instant getPlacedDate() {
+        return this.placedDate;
+    }
+
+    public Instant getAcceptedDate() {
+        return this.acceptedDate;
+    }
+
+    public Instant getCompletedDate() {
+        return this.completedDate;
+    }
+
+    public Instant getCancelledDate() {
+        return this.cancelledDate;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public void setVersion(int version) {
+        this.version = version;
+    }
+
+    public void setStatus(OrderStatus status) {
+        this.status = status;
+    }
+
+    public void setRiderId(UUID riderId) {
+        this.riderId = riderId;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
+    }
+
+    public void setRoute(List<WaypointProjection> route) {
+        this.route = route;
+    }
+
+    public void setDriverId(UUID driverId) {
+        this.driverId = driverId;
+    }
+
+    public void setPlacedDate(Instant placedDate) {
+        this.placedDate = placedDate;
+    }
+
+    public void setAcceptedDate(Instant acceptedDate) {
+        this.acceptedDate = acceptedDate;
+    }
+
+    public void setCompletedDate(Instant completedDate) {
+        this.completedDate = completedDate;
+    }
+
+    public void setCancelledDate(Instant cancelledDate) {
+        this.cancelledDate = cancelledDate;
+    }
+
+    public String toString() {
+        return "OrderProjection(id=" + this.getId() + ", version=" + this.getVersion() + ", status=" + this.getStatus() + ", riderId=" + this.getRiderId() + ", price=" + this.getPrice() + ", driverId=" + this.getDriverId() + ", placedDate=" + this.getPlacedDate() + ", acceptedDate=" + this.getAcceptedDate() + ", completedDate=" + this.getCompletedDate() + ", cancelledDate=" + this.getCancelledDate() + ")";
     }
 }

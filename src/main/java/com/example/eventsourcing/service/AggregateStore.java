@@ -4,15 +4,13 @@ import com.example.eventsourcing.config.EventSourcingProperties;
 import com.example.eventsourcing.config.EventSourcingProperties.SnapshottingProperties;
 import com.example.eventsourcing.domain.Aggregate;
 import com.example.eventsourcing.domain.AggregateType;
-import com.example.eventsourcing.error.OptimisticConcurrencyControlError;
 import com.example.eventsourcing.domain.event.Event;
 import com.example.eventsourcing.domain.event.EventWithId;
+import com.example.eventsourcing.error.OptimisticConcurrencyControlError;
 import com.example.eventsourcing.repository.AggregateRepository;
 import com.example.eventsourcing.repository.EventRepository;
 import jakarta.annotation.Nullable;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,13 +21,18 @@ import java.util.UUID;
 
 @Transactional
 @Component
-@RequiredArgsConstructor
-@Slf4j
 public class AggregateStore {
 
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(AggregateStore.class);
     private final AggregateRepository aggregateRepository;
     private final EventRepository eventRepository;
     private final EventSourcingProperties properties;
+
+    public AggregateStore(AggregateRepository aggregateRepository, EventRepository eventRepository, EventSourcingProperties properties) {
+        this.aggregateRepository = aggregateRepository;
+        this.eventRepository = eventRepository;
+        this.properties = properties;
+    }
 
     public List<EventWithId<Event>> saveAggregate(Aggregate aggregate) {
         log.debug("Saving aggregate {}", aggregate);
@@ -42,7 +45,7 @@ public class AggregateStore {
         int newVersion = aggregate.getVersion();
         if (!aggregateRepository.checkAndUpdateAggregateVersion(aggregateId, expectedVersion, newVersion)) {
             log.warn("Optimistic concurrency control error in aggregate {} {}: " +
-                     "actual version doesn't match expected version {}",
+                            "actual version doesn't match expected version {}",
                     aggregateType, aggregateId, expectedVersion);
             throw new OptimisticConcurrencyControlError(expectedVersion);
         }
@@ -62,8 +65,8 @@ public class AggregateStore {
     private void createAggregateSnapshot(SnapshottingProperties snapshotting,
                                          Aggregate aggregate) {
         if (snapshotting.enabled() &&
-            snapshotting.nthEvent() > 1 &&
-            aggregate.getVersion() % snapshotting.nthEvent() == 0) {
+                snapshotting.nthEvent() > 1 &&
+                aggregate.getVersion() % snapshotting.nthEvent() == 0) {
             log.info("Creating {} aggregate {} version {} snapshot",
                     aggregate.getAggregateType(), aggregate.getAggregateId(), aggregate.getVersion());
             aggregateRepository.createAggregateSnapshot(aggregate);
@@ -75,8 +78,8 @@ public class AggregateStore {
         return readAggregate(aggregateType, aggregateId, null);
     }
 
-    public Aggregate readAggregate(@NonNull AggregateType aggregateType,
-                                   @NonNull UUID aggregateId,
+    public Aggregate readAggregate(AggregateType aggregateType,
+                                   UUID aggregateId,
                                    @Nullable Integer version) {
         log.debug("Reading {} aggregate {}", aggregateType, aggregateId);
         SnapshottingProperties snapshotting = properties.getSnapshotting(aggregateType);

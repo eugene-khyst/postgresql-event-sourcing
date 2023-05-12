@@ -21,7 +21,6 @@ configurations {
 ext {
     set('postgresql_version', '42.5.4')
     set('mapstruct_version', '1.5.3.Final')
-    set('lombok_mapstruct_binding_version', '0.2.0')
     set('testcontainers_version', '1.17.6')
 }
 
@@ -36,13 +35,8 @@ dependencies {
 
     implementation 'org.flywaydb:flyway-core'
 
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    annotationProcessor "org.projectlombok:lombok-mapstruct-binding:${lombok_mapstruct_binding_version}"
     annotationProcessor "org.mapstruct:mapstruct-processor:${mapstruct_version}"
 
-    testCompileOnly 'org.projectlombok:lombok'
-    testAnnotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.kafka:spring-kafka-test'
     testImplementation 'org.testcontainers:junit-jupiter'

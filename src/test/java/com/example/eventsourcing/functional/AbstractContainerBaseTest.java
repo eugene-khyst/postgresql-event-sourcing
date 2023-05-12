@@ -1,4 +1,4 @@
-package com.example.eventsourcing;
+package com.example.eventsourcing.functional;
 
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;

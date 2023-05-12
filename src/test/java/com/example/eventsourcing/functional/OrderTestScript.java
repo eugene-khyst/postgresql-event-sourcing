@@ -1,16 +1,14 @@
-package com.example.eventsourcing;
+package com.example.eventsourcing.functional;
 
 import com.example.eventsourcing.config.KafkaTopicsConfig;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.slf4j.Logger;
 import org.springframework.boot.test.json.BasicJsonTester;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.http.*;
@@ -24,11 +22,10 @@ import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@RequiredArgsConstructor
-@Slf4j
 public class OrderTestScript {
 
     private static final HttpHeaders HEADERS = new HttpHeaders();
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(OrderTestScript.class);
 
     static {
         HEADERS.setContentType(MediaType.APPLICATION_JSON);
@@ -40,7 +37,11 @@ public class OrderTestScript {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final BasicJsonTester jsonTester = new BasicJsonTester(getClass());
 
-    @SneakyThrows
+    public OrderTestScript(TestRestTemplate restTemplate, String kafkaBrokers) {
+        this.restTemplate = restTemplate;
+        this.kafkaBrokers = kafkaBrokers;
+    }
+
     public void execute() {
         log.info("Place a new order");
         UUID orderId = placeOrder("""
@@ -222,7 +223,7 @@ public class OrderTestScript {
                 """.formatted(orderId));
     }
 
-    private UUID placeOrder(String body) throws JsonProcessingException {
+    private UUID placeOrder(String body) {
         ResponseEntity<String> response = this.restTemplate.exchange(
                 "/orders",
                 HttpMethod.POST,
@@ -237,9 +238,13 @@ public class OrderTestScript {
                 .extractingJsonPathStringValue("@.orderId")
                 .isNotEmpty();
 
-        JsonNode jsonTree = objectMapper.readTree(jsonString);
-        String orderId = jsonTree.get("orderId").asText();
-        return UUID.fromString(orderId);
+        try {
+            JsonNode jsonTree = objectMapper.readTree(jsonString);
+            String orderId = jsonTree.get("orderId").asText();
+            return UUID.fromString(orderId);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void modifyOrder(UUID orderId, String body) {

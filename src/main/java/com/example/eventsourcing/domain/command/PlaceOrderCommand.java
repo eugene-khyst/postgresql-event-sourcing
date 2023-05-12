@@ -2,15 +2,11 @@ package com.example.eventsourcing.domain.command;
 
 import com.example.eventsourcing.domain.AggregateType;
 import com.example.eventsourcing.dto.WaypointDto;
-import lombok.Getter;
-import lombok.ToString;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-@Getter
-@ToString(callSuper = true)
 public final class PlaceOrderCommand extends Command {
 
     private final UUID riderId;
@@ -28,5 +24,21 @@ public final class PlaceOrderCommand extends Command {
 
     private static UUID generateAggregateId() {
         return UUID.randomUUID();
+    }
+
+    public UUID getRiderId() {
+        return this.riderId;
+    }
+
+    public BigDecimal getPrice() {
+        return this.price;
+    }
+
+    public List<WaypointDto> getRoute() {
+        return this.route;
+    }
+
+    public String toString() {
+        return "PlaceOrderCommand(super=" + super.toString() + ", riderId=" + this.getRiderId() + ", price=" + this.getPrice() + ", route=" + this.getRoute() + ")";
     }
 }

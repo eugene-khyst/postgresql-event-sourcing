@@ -8,9 +8,7 @@ import com.example.eventsourcing.domain.event.EventWithId;
 import com.example.eventsourcing.service.command.CommandHandler;
 import com.example.eventsourcing.service.command.DefaultCommandHandler;
 import com.example.eventsourcing.service.event.SyncEventHandler;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,16 +17,22 @@ import java.util.UUID;
 
 @Transactional
 @Component
-@RequiredArgsConstructor
-@Slf4j
 public class CommandProcessor {
 
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(CommandProcessor.class);
     private final AggregateStore aggregateStore;
     private final List<CommandHandler<? extends Command>> commandHandlers;
     private final DefaultCommandHandler defaultCommandHandler;
     private final List<SyncEventHandler> aggregateChangesHandlers;
 
-    public Aggregate process(@NonNull Command command) {
+    public CommandProcessor(AggregateStore aggregateStore, List<CommandHandler<? extends Command>> commandHandlers, DefaultCommandHandler defaultCommandHandler, List<SyncEventHandler> aggregateChangesHandlers) {
+        this.aggregateStore = aggregateStore;
+        this.commandHandlers = commandHandlers;
+        this.defaultCommandHandler = defaultCommandHandler;
+        this.aggregateChangesHandlers = aggregateChangesHandlers;
+    }
+
+    public Aggregate process(Command command) {
         log.debug("Processing command {}", command);
 
         AggregateType aggregateType = command.getAggregateType();

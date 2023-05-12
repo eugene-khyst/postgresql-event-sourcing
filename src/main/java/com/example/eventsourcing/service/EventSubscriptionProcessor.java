@@ -5,8 +5,7 @@ import com.example.eventsourcing.domain.event.EventWithId;
 import com.example.eventsourcing.repository.EventRepository;
 import com.example.eventsourcing.repository.EventSubscriptionRepository;
 import com.example.eventsourcing.service.event.AsyncEventHandler;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -16,12 +15,16 @@ import java.util.List;
 
 @Transactional(propagation = Propagation.REQUIRES_NEW)
 @Component
-@RequiredArgsConstructor
-@Slf4j
 public class EventSubscriptionProcessor {
 
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(EventSubscriptionProcessor.class);
     private final EventSubscriptionRepository subscriptionRepository;
     private final EventRepository eventRepository;
+
+    public EventSubscriptionProcessor(EventSubscriptionRepository subscriptionRepository, EventRepository eventRepository) {
+        this.subscriptionRepository = subscriptionRepository;
+        this.eventRepository = eventRepository;
+    }
 
     @Async
     public void processNewEvents(AsyncEventHandler eventHandler) {

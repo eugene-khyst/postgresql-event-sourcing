@@ -1,15 +1,14 @@
 package com.example.eventsourcing.service.event;
 
-import com.example.eventsourcing.projection.OrderProjection;
 import com.example.eventsourcing.domain.Aggregate;
 import com.example.eventsourcing.domain.AggregateType;
 import com.example.eventsourcing.domain.OrderAggregate;
 import com.example.eventsourcing.domain.event.Event;
 import com.example.eventsourcing.domain.event.EventWithId;
 import com.example.eventsourcing.mapper.OrderMapper;
+import com.example.eventsourcing.projection.OrderProjection;
 import com.example.eventsourcing.repository.OrderProjectionRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,12 +16,16 @@ import java.util.List;
 
 @Transactional
 @Component
-@RequiredArgsConstructor
-@Slf4j
 public class OrderProjectionUpdater implements SyncEventHandler {
 
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(OrderProjectionUpdater.class);
     private final OrderProjectionRepository repository;
     private final OrderMapper mapper;
+
+    public OrderProjectionUpdater(OrderProjectionRepository repository, OrderMapper mapper) {
+        this.repository = repository;
+        this.mapper = mapper;
+    }
 
     @Override
     public void handleEvents(List<EventWithId<Event>> events, Aggregate aggregate) {

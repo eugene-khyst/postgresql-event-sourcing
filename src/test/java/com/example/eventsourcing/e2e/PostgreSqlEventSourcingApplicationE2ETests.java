@@ -1,5 +1,6 @@
-package com.example.eventsourcing;
+package com.example.eventsourcing.e2e;
 
+import com.example.eventsourcing.functional.OrderTestScript;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.boot.test.web.client.TestRestTemplate;

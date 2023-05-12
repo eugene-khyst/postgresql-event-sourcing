@@ -2,11 +2,9 @@ package com.example.eventsourcing.repository;
 
 import com.example.eventsourcing.domain.Aggregate;
 import com.example.eventsourcing.domain.AggregateType;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nullable;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import org.postgresql.util.PGobject;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -23,14 +21,18 @@ import java.util.UUID;
 
 @Transactional(propagation = Propagation.MANDATORY)
 @Repository
-@RequiredArgsConstructor
 public class AggregateRepository {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
 
-    public void createAggregateIfAbsent(@NonNull AggregateType aggregateType,
-                                        @NonNull UUID aggregateId) {
+    public AggregateRepository(NamedParameterJdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.objectMapper = objectMapper;
+    }
+
+    public void createAggregateIfAbsent(AggregateType aggregateType,
+                                        UUID aggregateId) {
         jdbcTemplate.update("""
                         INSERT INTO ES_AGGREGATE (ID, VERSION, AGGREGATE_TYPE)
                         VALUES (:aggregateId, 0, :aggregateType)
@@ -42,7 +44,7 @@ public class AggregateRepository {
                 ));
     }
 
-    public boolean checkAndUpdateAggregateVersion(@NonNull UUID aggregateId,
+    public boolean checkAndUpdateAggregateVersion(UUID aggregateId,
                                                   int expectedVersion,
                                                   int newVersion) {
         int updatedRows = jdbcTemplate.update("""
@@ -59,20 +61,23 @@ public class AggregateRepository {
         return updatedRows > 0;
     }
 
-    @SneakyThrows
-    public void createAggregateSnapshot(@NonNull Aggregate aggregate) {
-        jdbcTemplate.update("""
-                        INSERT INTO ES_AGGREGATE_SNAPSHOT (AGGREGATE_ID, VERSION, JSON_DATA)
-                        VALUES (:aggregateId, :version, :jsonObj::json)
-                        """,
-                Map.of(
-                        "aggregateId", aggregate.getAggregateId(),
-                        "version", aggregate.getVersion(),
-                        "jsonObj", objectMapper.writeValueAsString(aggregate)
-                ));
+    public void createAggregateSnapshot(Aggregate aggregate) {
+        try {
+            jdbcTemplate.update("""
+                            INSERT INTO ES_AGGREGATE_SNAPSHOT (AGGREGATE_ID, VERSION, JSON_DATA)
+                            VALUES (:aggregateId, :version, :jsonObj::json)
+                            """,
+                    Map.of(
+                            "aggregateId", aggregate.getAggregateId(),
+                            "version", aggregate.getVersion(),
+                            "jsonObj", objectMapper.writeValueAsString(aggregate)
+                    ));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public Optional<Aggregate> readAggregateSnapshot(@NonNull UUID aggregateId,
+    public Optional<Aggregate> readAggregateSnapshot(UUID aggregateId,
                                                      @Nullable Integer version) {
         MapSqlParameterSource parameters = new MapSqlParameterSource();
         parameters.addValue("aggregateId", aggregateId);
@@ -93,11 +98,14 @@ public class AggregateRepository {
         ).stream().findFirst();
     }
 
-    @SneakyThrows
     private Aggregate toAggregate(ResultSet rs, int rowNum) throws SQLException {
-        AggregateType aggregateType = AggregateType.valueOf(rs.getString("AGGREGATE_TYPE"));
-        PGobject jsonObj = (PGobject) rs.getObject("JSON_DATA");
-        String json = jsonObj.getValue();
-        return objectMapper.readValue(json, aggregateType.getAggregateClass());
+        try {
+            AggregateType aggregateType = AggregateType.valueOf(rs.getString("AGGREGATE_TYPE"));
+            PGobject jsonObj = (PGobject) rs.getObject("JSON_DATA");
+            String json = jsonObj.getValue();
+            return objectMapper.readValue(json, aggregateType.getAggregateClass());
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
