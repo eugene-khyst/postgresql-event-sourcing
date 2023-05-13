@@ -10,9 +10,4 @@ class OrderPlacedEvent(
     val riderId: UUID,
     val price: BigDecimal,
     val route: List<WaypointDto>
-) : Event(aggregateId, version) {
-
-    override fun toString(): String {
-        return "OrderPlacedEvent(super=" + super.toString() + ", riderId=" + riderId + ", price=" + price + ", route=" + route + ")"
-    }
-}
+) : Event(aggregateId, version)

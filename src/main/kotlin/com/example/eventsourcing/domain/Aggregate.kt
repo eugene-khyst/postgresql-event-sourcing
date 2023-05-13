@@ -84,10 +84,6 @@ abstract class Aggregate protected constructor(val aggregateId: UUID, var versio
         }
     }
 
-    override fun toString(): String {
-        return "Aggregate(aggregateId=" + aggregateId + ", changes=" + changes + ", version=" + version + ", baseVersion=" + baseVersion + ")"
-    }
-
     companion object {
         private val log = LoggerFactory.getLogger(Aggregate::class.java)
     }

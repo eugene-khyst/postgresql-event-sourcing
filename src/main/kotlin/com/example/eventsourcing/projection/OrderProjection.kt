@@ -60,8 +60,4 @@ class OrderProjection : Persistable<UUID?>, Serializable {
     fun setId(id: UUID?) {
         this.id = id
     }
-
-    override fun toString(): String {
-        return "OrderProjection(id=" + getId() + ", version=" + version + ", status=" + status + ", riderId=" + riderId + ", price=" + price + ", driverId=" + driverId + ", placedDate=" + placedDate + ", acceptedDate=" + acceptedDate + ", completedDate=" + completedDate + ", cancelledDate=" + cancelledDate + ")"
-    }
 }

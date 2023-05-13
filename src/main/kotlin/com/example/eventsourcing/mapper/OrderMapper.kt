@@ -32,12 +32,9 @@ class OrderMapper {
     }
 
     fun toDto(
-        event: Event?,
-        order: OrderAggregate?
-    ): OrderDto? {
-        if (event == null && order == null) {
-            return null
-        }
+        event: Event,
+        order: OrderAggregate
+    ): OrderDto {
         var eventType: String? = null
         var eventTimestamp = 0L
         if (event != null) {

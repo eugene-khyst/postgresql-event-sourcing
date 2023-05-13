@@ -121,8 +121,4 @@ class OrderAggregate(aggregateId: UUID, version: Int) : Aggregate(aggregateId, v
     }
 
     override val aggregateType = AggregateType.ORDER
-
-    override fun toString(): String {
-        return "OrderAggregate(super=" + super.toString() + ", status=" + status + ", riderId=" + riderId + ", price=" + price + ", route=" + route + ", driverId=" + driverId + ", placedDate=" + placedDate + ", acceptedDate=" + acceptedDate + ", completedDate=" + completedDate + ", cancelledDate=" + cancelledDate + ")"
-    }
 }

@@ -28,12 +28,12 @@ class OrderIntegrationEventSender(
         sendDataToKafka(orderDto)
     }
 
-    private fun sendDataToKafka(orderDto: OrderDto?) {
+    private fun sendDataToKafka(orderDto: OrderDto) {
         try {
             log.info("Publishing integration event {}", orderDto)
             kafkaTemplate.send(
                 TOPIC_ORDER_EVENTS,
-                orderDto!!.orderId.toString(),
+                orderDto.orderId.toString(),
                 objectMapper.writeValueAsString(orderDto)
             )
         } catch (e: JsonProcessingException) {

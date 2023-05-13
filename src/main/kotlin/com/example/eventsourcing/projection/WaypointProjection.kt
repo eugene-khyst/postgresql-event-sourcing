@@ -42,8 +42,4 @@ class WaypointProjection : Serializable {
         result = result * PRIME + (`$longitude` ushr 32 xor `$longitude`).toInt()
         return result
     }
-
-    override fun toString(): String {
-        return "WaypointProjection(address=" + address + ", latitude=" + latitude + ", longitude=" + longitude + ")"
-    }
 }

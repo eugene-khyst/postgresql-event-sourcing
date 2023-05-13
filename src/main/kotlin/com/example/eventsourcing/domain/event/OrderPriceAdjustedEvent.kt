@@ -7,9 +7,4 @@ class OrderPriceAdjustedEvent(
     aggregateId: UUID,
     version: Int,
     val newPrice: BigDecimal
-) : Event(aggregateId, version) {
-
-    override fun toString(): String {
-        return "OrderPriceAdjustedEvent(super=" + super.toString() + ", newPrice=" + newPrice + ")"
-    }
-}
+) : Event(aggregateId, version)

@@ -7,9 +7,4 @@ import java.util.*
 class AdjustOrderPriceCommand(
     aggregateId: UUID,
     val newPrice: BigDecimal
-) : Command(AggregateType.ORDER, aggregateId) {
-
-    override fun toString(): String {
-        return "AdjustOrderPriceCommand(super=" + super.toString() + ", newPrice=" + newPrice + ")"
-    }
-}
+) : Command(AggregateType.ORDER, aggregateId)
