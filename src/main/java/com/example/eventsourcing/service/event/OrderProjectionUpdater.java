@@ -20,11 +20,10 @@ public class OrderProjectionUpdater implements SyncEventHandler {
 
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(OrderProjectionUpdater.class);
     private final OrderProjectionRepository repository;
-    private final OrderMapper mapper;
+    private final OrderMapper mapper = new OrderMapper();
 
-    public OrderProjectionUpdater(OrderProjectionRepository repository, OrderMapper mapper) {
+    public OrderProjectionUpdater(OrderProjectionRepository repository) {
         this.repository = repository;
-        this.mapper = mapper;
     }
 
     @Override

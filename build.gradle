@@ -23,6 +23,7 @@ ext {
     set('postgresql_version', '42.5.4')
     set('mapstruct_version', '1.5.3.Final')
     set('testcontainers_version', '1.17.6')
+    set('http4k_version', '4.43.0.0')
 }
 
 dependencies {
@@ -33,6 +34,12 @@ dependencies {
 
     implementation "org.postgresql:postgresql:${postgresql_version}"
     implementation "org.mapstruct:mapstruct:${mapstruct_version}"
+
+    implementation platform("org.http4k:http4k-bom:${http4k_version}")
+    implementation "org.http4k:http4k-core"
+    implementation "org.http4k:http4k-server-undertow"
+    implementation "org.http4k:http4k-client-apache"
+    implementation "org.http4k:http4k-format-jackson"
 
     implementation 'org.flywaydb:flyway-core'
 

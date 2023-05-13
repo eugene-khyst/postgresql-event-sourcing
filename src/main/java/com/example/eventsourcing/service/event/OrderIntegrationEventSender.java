@@ -20,13 +20,12 @@ public class OrderIntegrationEventSender implements AsyncEventHandler {
 
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(OrderIntegrationEventSender.class);
     private final AggregateStore aggregateStore;
-    private final OrderMapper orderMapper;
+    private final OrderMapper orderMapper = new OrderMapper();
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
 
-    public OrderIntegrationEventSender(AggregateStore aggregateStore, OrderMapper orderMapper, KafkaTemplate<String, String> kafkaTemplate, ObjectMapper objectMapper) {
+    public OrderIntegrationEventSender(AggregateStore aggregateStore, KafkaTemplate<String, String> kafkaTemplate, ObjectMapper objectMapper) {
         this.aggregateStore = aggregateStore;
-        this.orderMapper = orderMapper;
         this.kafkaTemplate = kafkaTemplate;
         this.objectMapper = objectMapper;
     }

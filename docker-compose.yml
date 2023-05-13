@@ -64,6 +64,8 @@ services:
 
   nginx:
     image: nginx:1.23-alpine
+    profiles:
+      - full
     ports:
       - "8080:80"
     volumes:
@@ -71,6 +73,8 @@ services:
 
   event-sourcing-app:
     image: evgeniy-khyst/postgresql-event-sourcing:2.0.0
+    profiles:
+      - full
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
       SPRING_DATASOURCE_USERNAME: admin
