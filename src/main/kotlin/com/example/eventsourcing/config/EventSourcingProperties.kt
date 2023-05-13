@@ -1,26 +1,15 @@
-package com.example.eventsourcing.config;
+package com.example.eventsourcing.config
 
-import com.example.eventsourcing.domain.AggregateType;
+import com.example.eventsourcing.domain.AggregateType
 
-import java.util.Map;
-
-public class EventSourcingProperties {
-
-    private static final SnapshottingProperties NO_SNAPSHOTTING = new SnapshottingProperties(false, 0);
-
-    private final Map<AggregateType, SnapshottingProperties> snapshotting;
-
-    public EventSourcingProperties(Map<AggregateType, SnapshottingProperties> snapshotting) {
-        this.snapshotting = snapshotting;
+class EventSourcingProperties(private val snapshotting: Map<AggregateType, SnapshottingProperties>) {
+    fun getSnapshotting(aggregateType: AggregateType): SnapshottingProperties {
+        return snapshotting[aggregateType] ?: NO_SNAPSHOTTING
     }
 
-    public SnapshottingProperties getSnapshotting(AggregateType aggregateType) {
-        return snapshotting.getOrDefault(aggregateType, NO_SNAPSHOTTING);
-    }
-
-    public record SnapshottingProperties(
-            boolean enabled,
-            int nthEvent
-    ) {
+    @JvmRecord
+    data class SnapshottingProperties(val enabled: Boolean, val nthEvent: Int)
+    companion object {
+        private val NO_SNAPSHOTTING = SnapshottingProperties(false, 0)
     }
 }

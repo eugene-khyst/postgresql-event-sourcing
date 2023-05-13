@@ -1,6 +1,6 @@
 package com.example.kotlin.e2e
 
-import com.example.eventsourcing.functional.OrderTestScript
+import com.example.kotlin.functional.OrderTestScript
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.web.client.TestRestTemplate
 import org.springframework.boot.web.client.RestTemplateBuilder

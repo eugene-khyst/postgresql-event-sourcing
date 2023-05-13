@@ -1,6 +1,5 @@
 package com.example.kotlin.functional
 
-import com.example.eventsourcing.functional.OrderTestScript
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.web.client.TestRestTemplate
 import org.springframework.boot.web.client.RestTemplateBuilder

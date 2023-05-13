@@ -1,110 +1,96 @@
-package com.example.eventsourcing.mapper;
+package com.example.eventsourcing.mapper
 
-import com.example.eventsourcing.domain.OrderAggregate;
-import com.example.eventsourcing.domain.event.Event;
-import com.example.eventsourcing.dto.OrderDto;
-import com.example.eventsourcing.dto.OrderStatus;
-import com.example.eventsourcing.dto.WaypointDto;
-import com.example.eventsourcing.projection.OrderProjection;
-import com.example.eventsourcing.projection.WaypointProjection;
+import com.example.eventsourcing.domain.OrderAggregate
+import com.example.eventsourcing.domain.event.Event
+import com.example.eventsourcing.dto.OrderDto
+import com.example.eventsourcing.dto.OrderStatus
+import com.example.eventsourcing.dto.WaypointDto
+import com.example.eventsourcing.projection.OrderProjection
+import com.example.eventsourcing.projection.WaypointProjection
+import java.math.BigDecimal
+import java.time.Instant
+import java.util.*
 
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-public class OrderMapper {
-
-    public OrderProjection toProjection(OrderAggregate order) {
+class OrderMapper {
+    fun toProjection(order: OrderAggregate?): OrderProjection? {
         if (order == null) {
-            return null;
+            return null
         }
-
-        OrderProjection orderProjection = new OrderProjection();
-
-        orderProjection.setId(order.getAggregateId());
-        orderProjection.setVersion(order.getVersion());
-        orderProjection.setStatus(order.getStatus());
-        orderProjection.setRiderId(order.getRiderId());
-        orderProjection.setPrice(order.getPrice());
-        orderProjection.setRoute(waypointDtoListToWaypointProjectionList(order.getRoute()));
-        orderProjection.setDriverId(order.getDriverId());
-        orderProjection.setPlacedDate(order.getPlacedDate());
-        orderProjection.setAcceptedDate(order.getAcceptedDate());
-        orderProjection.setCompletedDate(order.getCompletedDate());
-        orderProjection.setCancelledDate(order.getCancelledDate());
-
-        return orderProjection;
+        val orderProjection = OrderProjection()
+        orderProjection.id = order.aggregateId
+        orderProjection.version = order.version
+        orderProjection.status = order.status
+        orderProjection.riderId = order.riderId
+        orderProjection.price = order.price
+        orderProjection.route = waypointDtoListToWaypointProjectionList(order.route)
+        orderProjection.driverId = order.driverId
+        orderProjection.placedDate = order.placedDate
+        orderProjection.acceptedDate = order.acceptedDate
+        orderProjection.completedDate = order.completedDate
+        orderProjection.cancelledDate = order.cancelledDate
+        return orderProjection
     }
 
-    public OrderDto toDto(Event event, OrderAggregate order) {
+    fun toDto(
+        event: Event?,
+        order: OrderAggregate?
+    ): OrderDto? {
         if (event == null && order == null) {
-            return null;
+            return null
         }
-
-        String eventType = null;
-        long eventTimestamp = 0L;
+        var eventType: String? = null
+        var eventTimestamp = 0L
         if (event != null) {
-            if (event.getEventType() != null) {
-                eventType = event.getEventType().name();
+            if (event.eventType != null) {
+                eventType = event.eventType.name
             }
-            eventTimestamp = toEpochMilli(event.getCreatedDate());
+            eventTimestamp = toEpochMilli(event.createdDate)
         }
-        UUID orderId = null;
-        int version = 0;
-        UUID riderId = null;
-        BigDecimal price = null;
-        List<WaypointDto> route = null;
-        UUID driverId = null;
-        OrderStatus status = null;
+        var orderId: UUID? = null
+        var version = 0
+        var riderId: UUID? = null
+        var price: BigDecimal? = null
+        var route: List<WaypointDto?>? = null
+        var driverId: UUID? = null
+        var status: OrderStatus? = null
         if (order != null) {
-            orderId = order.getAggregateId();
-            version = order.getBaseVersion();
-            riderId = order.getRiderId();
-            price = order.getPrice();
-            List<WaypointDto> list = order.getRoute();
+            orderId = order.aggregateId
+            version = order.baseVersion
+            riderId = order.riderId
+            price = order.price
+            val list = order.route
             if (list != null) {
-                route = new ArrayList<WaypointDto>(list);
+                route = ArrayList(list)
             }
-            driverId = order.getDriverId();
-            status = order.getStatus();
+            driverId = order.driverId
+            status = order.status
         }
-
-        OrderDto orderDto = new OrderDto(orderId, eventType, eventTimestamp, version, status, riderId, price, route, driverId);
-
-        return orderDto;
+        return OrderDto(orderId, eventType, eventTimestamp, version, status, riderId, price, route, driverId)
     }
 
-    protected WaypointProjection waypointDtoToWaypointProjection(WaypointDto waypointDto) {
+    protected fun waypointDtoToWaypointProjection(waypointDto: WaypointDto?): WaypointProjection? {
         if (waypointDto == null) {
-            return null;
+            return null
         }
-
-        WaypointProjection waypointProjection = new WaypointProjection();
-
-        waypointProjection.setAddress(waypointDto.address());
-        waypointProjection.setLatitude(waypointDto.latitude());
-        waypointProjection.setLongitude(waypointDto.longitude());
-
-        return waypointProjection;
+        val waypointProjection = WaypointProjection()
+        waypointProjection.address = waypointDto.address
+        waypointProjection.latitude = waypointDto.latitude
+        waypointProjection.longitude = waypointDto.longitude
+        return waypointProjection
     }
 
-    protected List<WaypointProjection> waypointDtoListToWaypointProjectionList(List<WaypointDto> list) {
+    protected fun waypointDtoListToWaypointProjectionList(list: List<WaypointDto?>?): List<WaypointProjection?>? {
         if (list == null) {
-            return null;
+            return null
         }
-
-        List<WaypointProjection> list1 = new ArrayList<WaypointProjection>(list.size());
-        for (WaypointDto waypointDto : list) {
-            list1.add(waypointDtoToWaypointProjection(waypointDto));
+        val list1: MutableList<WaypointProjection?> = ArrayList(list.size)
+        for (waypointDto in list) {
+            list1.add(waypointDtoToWaypointProjection(waypointDto))
         }
-
-        return list1;
+        return list1
     }
 
-    long toEpochMilli(Instant instant) {
-        return Optional.ofNullable(instant).map(Instant::toEpochMilli).orElse(0L);
+    fun toEpochMilli(instant: Instant?): Long {
+        return Optional.ofNullable(instant).map { obj: Instant -> obj.toEpochMilli() }.orElse(0L)
     }
 }

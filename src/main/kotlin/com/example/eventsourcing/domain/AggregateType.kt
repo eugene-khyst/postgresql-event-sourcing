@@ -1,28 +1,18 @@
-package com.example.eventsourcing.domain;
+package com.example.eventsourcing.domain
 
-import java.lang.reflect.Constructor;
-import java.util.UUID;
+import java.util.*
 
-public enum AggregateType {
+enum class AggregateType(@JvmField val aggregateClass: Class<out Aggregate>) {
+    ORDER(OrderAggregate::class.java);
 
-    ORDER(OrderAggregate.class);
-
-    private final Class<? extends Aggregate> aggregateClass;
-
-    AggregateType(Class<? extends Aggregate> aggregateClass) {
-        this.aggregateClass = aggregateClass;
-    }
-
-    public <T extends Aggregate> T newInstance(UUID aggregateId) {
-        try {
-            Constructor<? extends Aggregate> constructor = aggregateClass.getDeclaredConstructor(UUID.class, Integer.TYPE);
-            return (T) constructor.newInstance(aggregateId, 0);
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
+    fun <T : Aggregate?> newInstance(aggregateId: UUID?): T {
+        return try {
+            val constructor = aggregateClass.getDeclaredConstructor(
+                UUID::class.java, Integer.TYPE
+            )
+            constructor.newInstance(aggregateId, 0) as T
+        } catch (e: ReflectiveOperationException) {
+            throw RuntimeException(e)
         }
-    }
-
-    public Class<? extends Aggregate> getAggregateClass() {
-        return this.aggregateClass;
     }
 }

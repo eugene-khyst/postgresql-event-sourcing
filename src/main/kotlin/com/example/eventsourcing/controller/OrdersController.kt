@@ -1,84 +1,83 @@
-package com.example.eventsourcing.controller;
+package com.example.eventsourcing.controller
 
-import com.example.eventsourcing.domain.command.*;
-import com.example.eventsourcing.dto.OrderStatus;
-import com.example.eventsourcing.projection.OrderProjection;
-import com.example.eventsourcing.service.CommandProcessor;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.http.ResponseEntity;
+import com.example.eventsourcing.domain.command.*
+import com.example.eventsourcing.dto.OrderStatus
+import com.example.eventsourcing.dto.WaypointDto
+import com.example.eventsourcing.projection.OrderProjection
+import com.example.eventsourcing.service.CommandProcessor
+import com.fasterxml.jackson.core.type.TypeReference
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.http.ResponseEntity
+import java.math.BigDecimal
+import java.util.*
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.UUID;
-
-public class OrdersController {
-
-    private final ObjectMapper objectMapper;
-    private final CommandProcessor commandProcessor;
-    private final JpaRepository<OrderProjection, UUID> orderProjectionRepository;
-
-    public OrdersController(ObjectMapper objectMapper, CommandProcessor commandProcessor, JpaRepository<OrderProjection, UUID> orderProjectionRepository) {
-        this.objectMapper = objectMapper;
-        this.commandProcessor = commandProcessor;
-        this.orderProjectionRepository = orderProjectionRepository;
-    }
-
-    public ResponseEntity<JsonNode> placeOrder(JsonNode request) throws IOException {
-        var order = commandProcessor.process(new PlaceOrderCommand(
-                UUID.fromString(request.get("riderId").asText()),
-                new BigDecimal(request.get("price").asText()),
-                objectMapper.readValue(
-                        objectMapper.treeAsTokens(request.get("route")), new TypeReference<>() {
-                        }
-                )));
+class OrdersController(
+    private val objectMapper: ObjectMapper,
+    private val commandProcessor: CommandProcessor,
+    private val orderProjectionRepository: JpaRepository<OrderProjection, UUID>
+) {
+    fun placeOrder(request: JsonNode): ResponseEntity<JsonNode> {
+        val order = commandProcessor.process(PlaceOrderCommand(
+            UUID.fromString(request["riderId"].asText()),
+            BigDecimal(request["price"].asText()),
+            objectMapper.readValue(
+                objectMapper.treeAsTokens(request["route"]), object : TypeReference<List<WaypointDto>>() {}
+            )))
         return ResponseEntity.ok()
-                .body(objectMapper.createObjectNode()
-                        .put("orderId", order.getAggregateId().toString()));
+            .body(
+                objectMapper.createObjectNode()
+                    .put("orderId", order.aggregateId.toString())
+            )
     }
 
-    public ResponseEntity<Object> modifyOrder(UUID orderId, JsonNode request) {
-        OrderStatus newStatus = OrderStatus.valueOf(request.get("status").asText());
-        switch (newStatus) {
-            case ADJUSTED -> {
-                commandProcessor.process(new AdjustOrderPriceCommand(
+    fun modifyOrder(orderId: UUID, request: JsonNode): ResponseEntity<Any> {
+        val newStatus = OrderStatus.valueOf(request["status"].asText())
+        return when (newStatus) {
+            OrderStatus.ADJUSTED -> {
+                commandProcessor.process(
+                    AdjustOrderPriceCommand(
                         orderId,
-                        new BigDecimal(request.get("price").asText())
-                ));
-                return ResponseEntity.ok().build();
+                        BigDecimal(request["price"].asText())
+                    )
+                )
+                ResponseEntity.ok().build()
             }
-            case ACCEPTED -> {
-                commandProcessor.process(new AcceptOrderCommand(
+
+            OrderStatus.ACCEPTED -> {
+                commandProcessor.process(
+                    AcceptOrderCommand(
                         orderId,
-                        UUID.fromString(request.get("driverId").asText())
-                ));
-                return ResponseEntity.ok().build();
+                        UUID.fromString(request["driverId"].asText())
+                    )
+                )
+                ResponseEntity.ok().build()
             }
-            case COMPLETED -> {
-                commandProcessor.process(new CompleteOrderCommand(orderId));
-                return ResponseEntity.ok().build();
+
+            OrderStatus.COMPLETED -> {
+                commandProcessor.process(CompleteOrderCommand(orderId))
+                ResponseEntity.ok().build()
             }
-            case CANCELLED -> {
-                commandProcessor.process(new CancelOrderCommand(orderId));
-                return ResponseEntity.ok().build();
+
+            OrderStatus.CANCELLED -> {
+                commandProcessor.process(CancelOrderCommand(orderId))
+                ResponseEntity.ok().build()
             }
-            default -> {
-                return ResponseEntity.badRequest().build();
+
+            else -> {
+                ResponseEntity.badRequest().build()
             }
         }
     }
 
-    public ResponseEntity<List<OrderProjection>> getOrders() {
-        return ResponseEntity.ok(orderProjectionRepository.findAll());
-    }
+    val orders: ResponseEntity<List<OrderProjection>>
+        get() = ResponseEntity.ok(orderProjectionRepository.findAll())
 
-    public ResponseEntity<OrderProjection> getOrder(UUID orderId) {
+    fun getOrder(orderId: UUID): ResponseEntity<OrderProjection> {
         return orderProjectionRepository
-                .findById(orderId)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+            .findById(orderId)
+            .map<ResponseEntity<OrderProjection>> { body: OrderProjection? -> ResponseEntity.ok(body) }
+            .orElse(ResponseEntity.notFound().build())
     }
 }

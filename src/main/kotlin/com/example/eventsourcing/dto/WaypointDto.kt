@@ -1,12 +1,9 @@
-package com.example.eventsourcing.dto;
+package com.example.eventsourcing.dto
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty
 
-public record WaypointDto(
-        String address,
-        @JsonProperty("lat")
-        double latitude,
-        @JsonProperty("lon")
-        double longitude
-) {
-}
+data class WaypointDto(
+    val address: String,
+    @JsonProperty("lat") val latitude: Double,
+    @JsonProperty("lon") val longitude: Double
+)

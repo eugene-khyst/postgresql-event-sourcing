@@ -1,103 +1,94 @@
-package com.example.eventsourcing.domain;
+package com.example.eventsourcing.domain
 
-import com.example.eventsourcing.domain.command.Command;
-import com.example.eventsourcing.domain.event.Event;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import org.slf4j.Logger;
+import com.example.eventsourcing.domain.command.Command
+import com.example.eventsourcing.domain.event.Event
+import com.fasterxml.jackson.annotation.JsonIgnore
+import org.slf4j.LoggerFactory
+import java.lang.reflect.InvocationTargetException
+import java.util.*
+import java.util.function.Consumer
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+abstract class Aggregate protected constructor(val aggregateId: UUID, var version: Int) {
 
-public abstract class Aggregate {
-
-    private static final Logger log = org.slf4j.LoggerFactory.getLogger(Aggregate.class);
-    protected final UUID aggregateId;
     @JsonIgnore
-    protected final List<Event> changes = new ArrayList<>();
+    val changes: MutableList<Event> = ArrayList()
 
-    protected int version;
     @JsonIgnore
-    protected int baseVersion;
+    var baseVersion: Int = version
 
-    protected Aggregate(UUID aggregateId, int version) {
-        this.aggregateId = aggregateId;
-        this.baseVersion = this.version = version;
-    }
+    abstract val aggregateType: AggregateType
 
-    public abstract AggregateType getAggregateType();
-
-    public void loadFromHistory(List<Event> events) {
-        if (!changes.isEmpty()) {
-            throw new IllegalStateException("Aggregate has non-empty changes");
-        }
-        events.forEach(event -> {
-            if (event.getVersion() <= version) {
-                throw new IllegalStateException(
-                        "Event version %s <= aggregate base version %s".formatted(
-                                event.getVersion(), getNextVersion()));
+    fun loadFromHistory(events: List<Event>) {
+        check(changes.isEmpty()) { "Aggregate has non-empty changes" }
+        events.forEach(Consumer { event: Event ->
+            check(event.version > version) {
+                "Event version %s <= aggregate base version %s".formatted(
+                    event.version, nextVersion
+                )
             }
-            apply(event);
-            baseVersion = version = event.getVersion();
-        });
+            apply(event)
+            version = event.version
+            baseVersion = version
+        })
     }
 
-    protected int getNextVersion() {
-        return version + 1;
-    }
+    protected val nextVersion: Int
+        protected get() = version + 1
 
-    protected void applyChange(Event event) {
-        if (event.getVersion() != getNextVersion()) {
-            throw new IllegalStateException(
-                    "Event version %s doesn't match expected version %s".formatted(
-                            event.getVersion(), getNextVersion()));
+    protected fun applyChange(event: Event) {
+        check(event.version == nextVersion) {
+            "Event version %s doesn't match expected version %s".formatted(
+                event.version, nextVersion
+            )
         }
-        apply(event);
-        changes.add(event);
-        version = event.getVersion();
+        apply(event)
+        changes.add(event)
+        version = event.version
     }
 
-    private void apply(Event event) {
-        log.debug("Applying event {}", event);
-        invoke(event, "apply");
+    private fun apply(event: Event) {
+        log.debug("Applying event {}", event)
+        invoke(event, "apply")
     }
 
-    public void process(Command command) {
-        log.debug("Processing command {}", command);
-        invoke(command, "process");
+    fun process(command: Command) {
+        log.debug("Processing command {}", command)
+        invoke(command, "process")
     }
 
-    private void invoke(Object o, String methodName) {
+    private operator fun invoke(o: Any, methodName: String) {
         try {
-            Method method = this.getClass().getMethod(methodName, o.getClass());
-            method.invoke(this, o);
-        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-            throw new UnsupportedOperationException(
-                    "Aggregate %s doesn't support %s(%s)".formatted(
-                            this.getClass(), methodName, o.getClass().getSimpleName()),
-                    e);
+            val method = this.javaClass.getMethod(methodName, o.javaClass)
+            method.invoke(this, o)
+        } catch (e: NoSuchMethodException) {
+            throw UnsupportedOperationException(
+                "Aggregate %s doesn't support %s(%s)".formatted(
+                    this.javaClass, methodName, o.javaClass.simpleName
+                ),
+                e
+            )
+        } catch (e: IllegalAccessException) {
+            throw UnsupportedOperationException(
+                "Aggregate %s doesn't support %s(%s)".formatted(
+                    this.javaClass, methodName, o.javaClass.simpleName
+                ),
+                e
+            )
+        } catch (e: InvocationTargetException) {
+            throw UnsupportedOperationException(
+                "Aggregate %s doesn't support %s(%s)".formatted(
+                    this.javaClass, methodName, o.javaClass.simpleName
+                ),
+                e
+            )
         }
     }
 
-    public UUID getAggregateId() {
-        return this.aggregateId;
+    override fun toString(): String {
+        return "Aggregate(aggregateId=" + aggregateId + ", changes=" + changes + ", version=" + version + ", baseVersion=" + baseVersion + ")"
     }
 
-    public List<Event> getChanges() {
-        return this.changes;
-    }
-
-    public int getVersion() {
-        return this.version;
-    }
-
-    public int getBaseVersion() {
-        return this.baseVersion;
-    }
-
-    public String toString() {
-        return "Aggregate(aggregateId=" + this.getAggregateId() + ", changes=" + this.getChanges() + ", version=" + this.getVersion() + ", baseVersion=" + this.getBaseVersion() + ")";
+    companion object {
+        private val log = LoggerFactory.getLogger(Aggregate::class.java)
     }
 }

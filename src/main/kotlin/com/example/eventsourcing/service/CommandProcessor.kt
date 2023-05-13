@@ -1,60 +1,47 @@
-package com.example.eventsourcing.service;
+package com.example.eventsourcing.service
 
-import com.example.eventsourcing.domain.Aggregate;
-import com.example.eventsourcing.domain.AggregateType;
-import com.example.eventsourcing.domain.command.Command;
-import com.example.eventsourcing.domain.event.Event;
-import com.example.eventsourcing.domain.event.EventWithId;
-import com.example.eventsourcing.service.command.CommandHandler;
-import com.example.eventsourcing.service.command.DefaultCommandHandler;
-import com.example.eventsourcing.service.event.SyncEventHandler;
-import org.slf4j.Logger;
+import com.example.eventsourcing.domain.Aggregate
+import com.example.eventsourcing.domain.command.Command
+import com.example.eventsourcing.service.command.CommandHandler
+import com.example.eventsourcing.service.command.DefaultCommandHandler
+import com.example.eventsourcing.service.event.SyncEventHandler
+import org.slf4j.LoggerFactory
 
-import java.util.List;
-import java.util.UUID;
-
-public class CommandProcessor {
-
-    private static final Logger log = org.slf4j.LoggerFactory.getLogger(CommandProcessor.class);
-    private final AggregateStore aggregateStore;
-    private final List<CommandHandler<? extends Command>> commandHandlers;
-    private final DefaultCommandHandler defaultCommandHandler;
-    private final List<SyncEventHandler> aggregateChangesHandlers;
-
-    public CommandProcessor(AggregateStore aggregateStore, List<CommandHandler<? extends Command>> commandHandlers, DefaultCommandHandler defaultCommandHandler, List<SyncEventHandler> aggregateChangesHandlers) {
-        this.aggregateStore = aggregateStore;
-        this.commandHandlers = commandHandlers;
-        this.defaultCommandHandler = defaultCommandHandler;
-        this.aggregateChangesHandlers = aggregateChangesHandlers;
+class CommandProcessor(
+    private val aggregateStore: AggregateStore,
+    private val commandHandlers: List<CommandHandler<out Command>>,
+    private val defaultCommandHandler: DefaultCommandHandler,
+    private val aggregateChangesHandlers: List<SyncEventHandler>
+) {
+    fun process(command: Command): Aggregate {
+        log.debug("Processing command {}", command)
+        val aggregateType = command.aggregateType
+        val aggregateId = command.aggregateId
+        val aggregate = aggregateStore.readAggregate(aggregateType, aggregateId)
+        commandHandlers.stream()
+            .filter { commandHandler: CommandHandler<out Command> -> commandHandler.commandType == command.javaClass }
+            .findFirst()
+            .ifPresentOrElse({ commandHandler: CommandHandler<out Command> ->
+                log.debug(
+                    "Handling command {} with {}",
+                    command.javaClass.simpleName, commandHandler.javaClass.simpleName
+                )
+                commandHandler.handle(aggregate, command)
+            }) {
+                log.debug(
+                    "No specialized handler found, handling command {} with {}",
+                    command.javaClass.simpleName, defaultCommandHandler.javaClass.simpleName
+                )
+                defaultCommandHandler.handle(aggregate, command)
+            }
+        val newEvents = aggregateStore.saveAggregate(aggregate)
+        aggregateChangesHandlers.stream()
+            .filter { handler: SyncEventHandler -> handler.aggregateType === aggregateType }
+            .forEach { handler: SyncEventHandler -> handler.handleEvents(newEvents, aggregate) }
+        return aggregate
     }
 
-    public Aggregate process(Command command) {
-        log.debug("Processing command {}", command);
-
-        AggregateType aggregateType = command.getAggregateType();
-        UUID aggregateId = command.getAggregateId();
-
-        Aggregate aggregate = aggregateStore.readAggregate(aggregateType, aggregateId);
-
-        commandHandlers.stream()
-                .filter(commandHandler -> commandHandler.getCommandType() == command.getClass())
-                .findFirst()
-                .ifPresentOrElse(commandHandler -> {
-                    log.debug("Handling command {} with {}",
-                            command.getClass().getSimpleName(), commandHandler.getClass().getSimpleName());
-                    commandHandler.handle(aggregate, command);
-                }, () -> {
-                    log.debug("No specialized handler found, handling command {} with {}",
-                            command.getClass().getSimpleName(), defaultCommandHandler.getClass().getSimpleName());
-                    defaultCommandHandler.handle(aggregate, command);
-                });
-
-        List<EventWithId<Event>> newEvents = aggregateStore.saveAggregate(aggregate);
-
-        aggregateChangesHandlers.stream()
-                .filter(handler -> handler.getAggregateType() == aggregateType)
-                .forEach(handler -> handler.handleEvents(newEvents, aggregate));
-
-        return aggregate;
+    companion object {
+        private val log = LoggerFactory.getLogger(CommandProcessor::class.java)
     }
 }

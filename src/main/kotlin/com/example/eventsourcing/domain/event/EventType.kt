@@ -1,29 +1,20 @@
-package com.example.eventsourcing.domain.event;
+package com.example.eventsourcing.domain.event
 
-import java.util.Arrays;
+import java.util.*
 
-public enum EventType {
+enum class EventType(val eventClass: Class<out Event>) {
+    ORDER_PLACED(OrderPlacedEvent::class.java),
+    ORDER_PRICE_ADJUSTED(OrderPriceAdjustedEvent::class.java),
+    ORDER_ACCEPTED(OrderAcceptedEvent::class.java),
+    ORDER_COMPLETED(OrderCompletedEvent::class.java),
+    ORDER_CANCELLED(OrderCancelledEvent::class.java);
 
-    ORDER_PLACED(OrderPlacedEvent.class),
-    ORDER_PRICE_ADJUSTED(OrderPriceAdjustedEvent.class),
-    ORDER_ACCEPTED(OrderAcceptedEvent.class),
-    ORDER_COMPLETED(OrderCompletedEvent.class),
-    ORDER_CANCELLED(OrderCancelledEvent.class);
-
-    private final Class<? extends Event> eventClass;
-
-    EventType(Class<? extends Event> eventClass) {
-        this.eventClass = eventClass;
-    }
-
-    public static EventType fromClass(Class<? extends Event> eventClass) {
-        return Arrays.stream(EventType.values())
-                .filter(eventType -> eventType.eventClass == eventClass)
+    companion object {
+        fun fromClass(eventClass: Class<out Event?>): EventType {
+            return Arrays.stream(values())
+                .filter { eventType: EventType -> eventType.eventClass == eventClass }
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Unknown event class %s".formatted(eventClass)));
-    }
-
-    public Class<? extends Event> getEventClass() {
-        return this.eventClass;
+                .orElseThrow { RuntimeException("Unknown event class %s".formatted(eventClass)) }
+        }
     }
 }

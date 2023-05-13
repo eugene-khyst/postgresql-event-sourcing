@@ -1,10 +1,5 @@
-package com.example.eventsourcing.domain.event;
+package com.example.eventsourcing.domain.event
 
-import java.math.BigInteger;
+import java.math.BigInteger
 
-public record EventWithId<T extends Event>(
-        long id,
-        BigInteger transactionId,
-        T event
-) {
-}
+data class EventWithId<T : Event>(val id: Long, val transactionId: BigInteger, val event: T)

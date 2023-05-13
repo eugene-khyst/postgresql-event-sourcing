@@ -1,8 +1,3 @@
-package com.example.eventsourcing.error;
+package com.example.eventsourcing.error
 
-public class Error extends RuntimeException {
-
-    public Error(String message, Object... args) {
-        super(message.formatted(args));
-    }
-}
+open class Error(message: String, vararg args: Any?) : RuntimeException(message.formatted(*args))

@@ -1,25 +1,15 @@
-package com.example.eventsourcing.domain.command;
+package com.example.eventsourcing.domain.command
 
-import com.example.eventsourcing.domain.AggregateType;
+import com.example.eventsourcing.domain.AggregateType
+import java.math.BigDecimal
+import java.util.*
 
-import java.math.BigDecimal;
-import java.util.UUID;
+class AdjustOrderPriceCommand(
+    aggregateId: UUID,
+    val newPrice: BigDecimal
+) : Command(AggregateType.ORDER, aggregateId) {
 
-public final class AdjustOrderPriceCommand extends Command {
-
-    private final BigDecimal newPrice;
-
-    public AdjustOrderPriceCommand(UUID aggregateId,
-                                   BigDecimal newPrice) {
-        super(AggregateType.ORDER, aggregateId);
-        this.newPrice = newPrice;
-    }
-
-    public BigDecimal getNewPrice() {
-        return this.newPrice;
-    }
-
-    public String toString() {
-        return "AdjustOrderPriceCommand(super=" + super.toString() + ", newPrice=" + this.getNewPrice() + ")";
+    override fun toString(): String {
+        return "AdjustOrderPriceCommand(super=" + super.toString() + ", newPrice=" + newPrice + ")"
     }
 }

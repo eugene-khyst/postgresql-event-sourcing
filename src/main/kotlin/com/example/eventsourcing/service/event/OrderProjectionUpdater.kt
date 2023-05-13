@@ -1,42 +1,34 @@
-package com.example.eventsourcing.service.event;
+package com.example.eventsourcing.service.event
 
-import com.example.eventsourcing.domain.Aggregate;
-import com.example.eventsourcing.domain.AggregateType;
-import com.example.eventsourcing.domain.OrderAggregate;
-import com.example.eventsourcing.domain.event.Event;
-import com.example.eventsourcing.domain.event.EventWithId;
-import com.example.eventsourcing.mapper.OrderMapper;
-import com.example.eventsourcing.projection.OrderProjection;
-import org.slf4j.Logger;
-import org.springframework.data.jpa.repository.JpaRepository;
+import com.example.eventsourcing.domain.Aggregate
+import com.example.eventsourcing.domain.AggregateType
+import com.example.eventsourcing.domain.OrderAggregate
+import com.example.eventsourcing.domain.event.Event
+import com.example.eventsourcing.domain.event.EventWithId
+import com.example.eventsourcing.mapper.OrderMapper
+import com.example.eventsourcing.projection.OrderProjection
+import org.slf4j.LoggerFactory
+import org.springframework.data.jpa.repository.JpaRepository
+import java.util.*
 
-import java.util.List;
-import java.util.UUID;
+class OrderProjectionUpdater(private val repository: JpaRepository<OrderProjection, UUID>) : SyncEventHandler {
+    private val mapper = OrderMapper()
 
-public class OrderProjectionUpdater implements SyncEventHandler {
-
-    private static final Logger log = org.slf4j.LoggerFactory.getLogger(OrderProjectionUpdater.class);
-    private final JpaRepository<OrderProjection, UUID> repository;
-    private final OrderMapper mapper = new OrderMapper();
-
-    public OrderProjectionUpdater(JpaRepository<OrderProjection, UUID> repository) {
-        this.repository = repository;
+    override fun handleEvents(events: List<EventWithId<Event>>, aggregate: Aggregate?) {
+        log.debug("Updating read model for order {}", aggregate)
+        updateOrderProjection(aggregate as OrderAggregate?)
     }
 
-    @Override
-    public void handleEvents(List<EventWithId<Event>> events, Aggregate aggregate) {
-        log.debug("Updating read model for order {}", aggregate);
-        updateOrderProjection((OrderAggregate) aggregate);
+    private fun updateOrderProjection(orderAggregate: OrderAggregate?) {
+        val orderProjection = mapper.toProjection(orderAggregate)
+        log.info("Saving order projection {}", orderProjection)
+        repository.save(orderProjection)
     }
 
-    private void updateOrderProjection(OrderAggregate orderAggregate) {
-        OrderProjection orderProjection = mapper.toProjection(orderAggregate);
-        log.info("Saving order projection {}", orderProjection);
-        repository.save(orderProjection);
-    }
+    override val aggregateType: AggregateType
+        get() = AggregateType.ORDER
 
-    @Override
-    public AggregateType getAggregateType() {
-        return AggregateType.ORDER;
+    companion object {
+        private val log = LoggerFactory.getLogger(OrderProjectionUpdater::class.java)
     }
 }

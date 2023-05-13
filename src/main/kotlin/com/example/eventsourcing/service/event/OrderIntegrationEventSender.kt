@@ -1,58 +1,50 @@
-package com.example.eventsourcing.service.event;
+package com.example.eventsourcing.service.event
 
-import com.example.eventsourcing.domain.Aggregate;
-import com.example.eventsourcing.domain.AggregateType;
-import com.example.eventsourcing.domain.OrderAggregate;
-import com.example.eventsourcing.domain.event.Event;
-import com.example.eventsourcing.domain.event.EventWithId;
-import com.example.eventsourcing.dto.OrderDto;
-import com.example.eventsourcing.mapper.OrderMapper;
-import com.example.eventsourcing.service.AggregateStore;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.springframework.kafka.core.KafkaTemplate;
+import com.example.eventsourcing.TOPIC_ORDER_EVENTS
+import com.example.eventsourcing.domain.AggregateType
+import com.example.eventsourcing.domain.OrderAggregate
+import com.example.eventsourcing.domain.event.Event
+import com.example.eventsourcing.domain.event.EventWithId
+import com.example.eventsourcing.dto.OrderDto
+import com.example.eventsourcing.mapper.OrderMapper
+import com.example.eventsourcing.service.AggregateStore
+import com.fasterxml.jackson.core.JsonProcessingException
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.slf4j.LoggerFactory
+import org.springframework.kafka.core.KafkaTemplate
 
-import static com.example.eventsourcing.MainKt.TOPIC_ORDER_EVENTS;
-
-public class OrderIntegrationEventSender implements AsyncEventHandler {
-
-    private static final Logger log = org.slf4j.LoggerFactory.getLogger(OrderIntegrationEventSender.class);
-    private final AggregateStore aggregateStore;
-    private final OrderMapper orderMapper = new OrderMapper();
-    private final KafkaTemplate<String, String> kafkaTemplate;
-    private final ObjectMapper objectMapper;
-
-    public OrderIntegrationEventSender(AggregateStore aggregateStore, KafkaTemplate<String, String> kafkaTemplate, ObjectMapper objectMapper) {
-        this.aggregateStore = aggregateStore;
-        this.kafkaTemplate = kafkaTemplate;
-        this.objectMapper = objectMapper;
+class OrderIntegrationEventSender(
+    private val aggregateStore: AggregateStore,
+    private val kafkaTemplate: KafkaTemplate<String, String>,
+    private val objectMapper: ObjectMapper
+) : AsyncEventHandler {
+    private val orderMapper = OrderMapper()
+    override fun handleEvent(eventWithId: EventWithId<Event>) {
+        val event = eventWithId.event
+        val aggregate = aggregateStore.readAggregate(
+            AggregateType.ORDER, event.aggregateId, event.version
+        )
+        val orderDto = orderMapper.toDto(event, aggregate as OrderAggregate)
+        sendDataToKafka(orderDto)
     }
 
-    @Override
-    public void handleEvent(EventWithId<Event> eventWithId) {
-        Event event = eventWithId.event();
-        Aggregate aggregate = aggregateStore.readAggregate(
-                AggregateType.ORDER, event.getAggregateId(), event.getVersion());
-        OrderDto orderDto = orderMapper.toDto(event, (OrderAggregate) aggregate);
-        sendDataToKafka(orderDto);
-    }
-
-    private void sendDataToKafka(OrderDto orderDto) {
+    private fun sendDataToKafka(orderDto: OrderDto?) {
         try {
-            log.info("Publishing integration event {}", orderDto);
+            log.info("Publishing integration event {}", orderDto)
             kafkaTemplate.send(
-                    TOPIC_ORDER_EVENTS,
-                    orderDto.orderId().toString(),
-                    objectMapper.writeValueAsString(orderDto)
-            );
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+                TOPIC_ORDER_EVENTS,
+                orderDto!!.orderId.toString(),
+                objectMapper.writeValueAsString(orderDto)
+            )
+        } catch (e: JsonProcessingException) {
+            throw RuntimeException(e)
         }
     }
 
-    @Override
-    public AggregateType getAggregateType() {
-        return AggregateType.ORDER;
+    override val aggregateType: AggregateType?
+        get() = AggregateType.ORDER
+
+    companion object {
+        private val log = LoggerFactory.getLogger(OrderIntegrationEventSender::class.java)
     }
 }

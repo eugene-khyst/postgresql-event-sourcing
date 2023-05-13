@@ -1,63 +1,56 @@
-package com.example.eventsourcing.repository;
+package com.example.eventsourcing.repository
 
-import com.example.eventsourcing.domain.AggregateType;
-import com.example.eventsourcing.domain.event.Event;
-import com.example.eventsourcing.domain.event.EventType;
-import com.example.eventsourcing.domain.event.EventWithId;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.Nullable;
-import org.postgresql.util.PGobject;
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import com.example.eventsourcing.domain.AggregateType
+import com.example.eventsourcing.domain.event.Event
+import com.example.eventsourcing.domain.event.EventType
+import com.example.eventsourcing.domain.event.EventWithId
+import com.fasterxml.jackson.core.JsonProcessingException
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.postgresql.util.PGobject
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
+import java.math.BigInteger
+import java.sql.ResultSet
+import java.sql.SQLException
+import java.sql.Types
+import java.util.*
+import java.util.Map
+import kotlin.collections.List
 
-import java.math.BigInteger;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Types;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-public class EventRepository {
-
-    private final NamedParameterJdbcTemplate jdbcTemplate;
-    private final ObjectMapper objectMapper;
-
-    public EventRepository(NamedParameterJdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.objectMapper = objectMapper;
-    }
-
-    public <T extends Event> EventWithId<T> appendEvent(Event event) {
-        try {
-            List<EventWithId<T>> result = jdbcTemplate.query("""
+class EventRepository(private val jdbcTemplate: NamedParameterJdbcTemplate, private val objectMapper: ObjectMapper) {
+    fun <T : Event> appendEvent(event: Event): EventWithId<T> {
+        return try {
+            val result = jdbcTemplate.query<EventWithId<T>>(
+                """
                             INSERT INTO ES_EVENT (TRANSACTION_ID, AGGREGATE_ID, VERSION, EVENT_TYPE, JSON_DATA)
                             VALUES(pg_current_xact_id(), :aggregateId, :version, :eventType, :jsonObj::json)
                             RETURNING ID, TRANSACTION_ID::text, EVENT_TYPE, JSON_DATA
-                            """,
-                    Map.of(
-                            "aggregateId", event.getAggregateId(),
-                            "version", event.getVersion(),
-                            "eventType", event.getEventType().toString(),
-                            "jsonObj", objectMapper.writeValueAsString(event)
-                    ),
-                    this::toEvent);
-            return result.get(0);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+                            
+                            """.trimIndent(),
+                Map.of(
+                    "aggregateId", event.aggregateId,
+                    "version", event.version,
+                    "eventType", event.eventType.toString(),
+                    "jsonObj", objectMapper.writeValueAsString(event)
+                )
+            ) { rs: ResultSet, rowNum: Int -> toEvent(rs, rowNum) }
+            result[0]
+        } catch (e: Exception) {
+            throw RuntimeException(e)
         }
     }
 
-    public List<EventWithId<Event>> readEvents(UUID aggregateId,
-                                               @Nullable Integer fromVersion,
-                                               @Nullable Integer toVersion) {
-        MapSqlParameterSource parameters = new MapSqlParameterSource();
-        parameters.addValue("aggregateId", aggregateId);
-        parameters.addValue("fromVersion", fromVersion, Types.INTEGER);
-        parameters.addValue("toVersion", toVersion, Types.INTEGER);
-
-        return jdbcTemplate.query("""
+    fun readEvents(
+        aggregateId: UUID,
+        fromVersion: Int?,
+        toVersion: Int?
+    ): List<EventWithId<Event>> {
+        val parameters = MapSqlParameterSource()
+        parameters.addValue("aggregateId", aggregateId)
+        parameters.addValue("fromVersion", fromVersion, Types.INTEGER)
+        parameters.addValue("toVersion", toVersion, Types.INTEGER)
+        return jdbcTemplate.query(
+            """
                         SELECT ID,
                                TRANSACTION_ID::text,
                                EVENT_TYPE,
@@ -67,15 +60,19 @@ public class EventRepository {
                            AND (:fromVersion IS NULL OR VERSION > :fromVersion)
                            AND (:toVersion IS NULL OR VERSION <= :toVersion)
                          ORDER BY VERSION ASC
-                        """,
-                parameters,
-                this::toEvent);
+                        
+                        """.trimIndent(),
+            parameters
+        ) { rs: ResultSet, rowNum: Int -> toEvent(rs, rowNum) }
     }
 
-    public List<EventWithId<Event>> readEventsAfterCheckpoint(AggregateType aggregateType,
-                                                              BigInteger lastProcessedTransactionId,
-                                                              long lastProcessedEventId) {
-        return jdbcTemplate.query("""
+    fun readEventsAfterCheckpoint(
+        aggregateType: AggregateType?,
+        lastProcessedTransactionId: BigInteger,
+        lastProcessedEventId: Long
+    ): List<EventWithId<Event>> {
+        return jdbcTemplate.query(
+            """
                         SELECT e.ID,
                                e.TRANSACTION_ID::text,
                                e.EVENT_TYPE,
@@ -86,27 +83,28 @@ public class EventRepository {
                            AND (e.TRANSACTION_ID, e.ID) > (:lastProcessedTransactionId::xid8, :lastProcessedEventId)
                            AND e.TRANSACTION_ID < pg_snapshot_xmin(pg_current_snapshot())
                          ORDER BY e.TRANSACTION_ID ASC, e.ID ASC
-                        """,
-                Map.of(
-                        "aggregateType", aggregateType.toString(),
-                        "lastProcessedTransactionId", lastProcessedTransactionId.toString(),
-                        "lastProcessedEventId", lastProcessedEventId
-                ),
-                this::toEvent);
+                        
+                        """.trimIndent(),
+            Map.of(
+                "aggregateType", aggregateType.toString(),
+                "lastProcessedTransactionId", lastProcessedTransactionId.toString(),
+                "lastProcessedEventId", lastProcessedEventId
+            )
+        ) { rs: ResultSet, rowNum: Int -> toEvent(rs, rowNum) }
     }
 
-    @SuppressWarnings("unchecked")
-    private <T extends Event> EventWithId<T> toEvent(ResultSet rs, int rowNum) throws SQLException {
-        long id = rs.getLong("ID");
-        String transactionId = rs.getString("TRANSACTION_ID");
-        EventType eventType = EventType.valueOf(rs.getString("EVENT_TYPE"));
-        PGobject jsonObj = (PGobject) rs.getObject("JSON_DATA");
-        String json = jsonObj.getValue();
-        try {
-            Event event = objectMapper.readValue(json, eventType.getEventClass());
-            return new EventWithId<>(id, new BigInteger(transactionId), (T) event);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+    @Throws(SQLException::class)
+    private fun <T : Event> toEvent(rs: ResultSet, rowNum: Int): EventWithId<T> {
+        val id = rs.getLong("ID")
+        val transactionId = rs.getString("TRANSACTION_ID")
+        val eventType = EventType.valueOf(rs.getString("EVENT_TYPE"))
+        val jsonObj = rs.getObject("JSON_DATA") as PGobject
+        val json = jsonObj.value
+        return try {
+            val event = objectMapper.readValue(json, eventType.eventClass)
+            EventWithId(id, BigInteger(transactionId), event as T)
+        } catch (e: JsonProcessingException) {
+            throw RuntimeException(e)
         }
     }
 }

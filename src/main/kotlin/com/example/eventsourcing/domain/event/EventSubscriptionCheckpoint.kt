@@ -1,9 +1,5 @@
-package com.example.eventsourcing.domain.event;
+package com.example.eventsourcing.domain.event
 
-import java.math.BigInteger;
+import java.math.BigInteger
 
-public record EventSubscriptionCheckpoint(
-        BigInteger lastProcessedTransactionId,
-        long lastProcessedEventId
-) {
-}
+data class EventSubscriptionCheckpoint(val lastProcessedTransactionId: BigInteger, val lastProcessedEventId: Long)

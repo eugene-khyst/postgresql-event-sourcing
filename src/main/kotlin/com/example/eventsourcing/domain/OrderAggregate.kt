@@ -1,161 +1,128 @@
-package com.example.eventsourcing.domain;
+package com.example.eventsourcing.domain
 
-import com.example.eventsourcing.domain.command.*;
-import com.example.eventsourcing.domain.event.*;
-import com.example.eventsourcing.dto.OrderStatus;
-import com.example.eventsourcing.dto.WaypointDto;
-import com.example.eventsourcing.error.Error;
-import com.fasterxml.jackson.annotation.JsonCreator;
+import com.example.eventsourcing.domain.command.*
+import com.example.eventsourcing.domain.event.*
+import com.example.eventsourcing.dto.OrderStatus
+import com.example.eventsourcing.dto.WaypointDto
+import com.example.eventsourcing.error.Error
+import java.math.BigDecimal
+import java.time.Instant
+import java.util.*
 
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.EnumSet;
-import java.util.List;
-import java.util.UUID;
+class OrderAggregate(aggregateId: UUID, version: Int) : Aggregate(aggregateId, version) {
+    var status: OrderStatus? = null
+        private set
+    var riderId: UUID? = null
+        private set
+    var price: BigDecimal? = null
+        private set
+    var route: List<WaypointDto?>? = null
+        private set
+    var driverId: UUID? = null
+        private set
+    var placedDate: Instant? = null
+        private set
+    var acceptedDate: Instant? = null
+        private set
+    var completedDate: Instant? = null
+        private set
+    var cancelledDate: Instant? = null
+        private set
 
-public class OrderAggregate extends Aggregate {
-
-    private OrderStatus status;
-    private UUID riderId;
-    private BigDecimal price;
-    private List<WaypointDto> route;
-    private UUID driverId;
-    private Instant placedDate;
-    private Instant acceptedDate;
-    private Instant completedDate;
-    private Instant cancelledDate;
-
-    @JsonCreator
-    public OrderAggregate(UUID aggregateId, int version) {
-        super(aggregateId, version);
-    }
-
-    public void process(PlaceOrderCommand command) {
+    fun process(command: PlaceOrderCommand) {
         if (status != null) {
-            throw new Error("Can't place an order, it's already in status %s", status);
+            throw Error("Can't place an order, it's already in status %s", status)
         }
-        applyChange(OrderPlacedEvent.builder()
-                .aggregateId(aggregateId)
-                .version(getNextVersion())
-                .riderId(command.getRiderId())
-                .price(command.getPrice())
-                .route(command.getRoute())
-                .build());
+        applyChange(
+            OrderPlacedEvent(
+                aggregateId,
+                nextVersion,
+                command.riderId,
+                command.price,
+                command.route,
+            )
+        )
     }
 
-    public void process(AdjustOrderPriceCommand command) {
+    fun process(command: AdjustOrderPriceCommand) {
         if (!EnumSet.of(OrderStatus.PLACED, OrderStatus.ADJUSTED).contains(status)) {
-            throw new Error("Can't adjust the price of an order in status %s", status);
+            throw Error("Can't adjust the price of an order in status %s", status)
         }
-        applyChange(OrderPriceAdjustedEvent.builder()
-                .aggregateId(aggregateId)
-                .version(getNextVersion())
-                .newPrice(command.getNewPrice())
-                .build());
+        applyChange(
+            OrderPriceAdjustedEvent(
+                aggregateId,
+                nextVersion,
+                command.newPrice,
+            )
+        )
     }
 
-    public void process(AcceptOrderCommand command) {
+    fun process(command: AcceptOrderCommand) {
         if (EnumSet.of(OrderStatus.ACCEPTED, OrderStatus.COMPLETED, OrderStatus.CANCELLED).contains(status)) {
-            throw new Error("Can't accept order in status %s", status);
+            throw Error("Can't accept order in status %s", status)
         }
-        applyChange(OrderAcceptedEvent.builder()
-                .aggregateId(aggregateId)
-                .version(getNextVersion())
-                .driverId(command.getDriverId())
-                .build());
+        applyChange(
+            OrderAcceptedEvent(
+                aggregateId,
+                nextVersion,
+                command.driverId
+            )
+        )
     }
 
-    public void process(CompleteOrderCommand command) {
+    fun process(command: CompleteOrderCommand?) {
         if (status != OrderStatus.ACCEPTED) {
-            throw new Error("Order in status %s can't be completed", status);
+            throw Error("Order in status %s can't be completed", status)
         }
-        applyChange(OrderCompletedEvent.builder()
-                .aggregateId(aggregateId)
-                .version(getNextVersion())
-                .build());
+        applyChange(
+            OrderCompletedEvent(
+                aggregateId,
+                nextVersion
+            )
+        )
     }
 
-    public void process(CancelOrderCommand command) {
+    fun process(command: CancelOrderCommand?) {
         if (!EnumSet.of(OrderStatus.PLACED, OrderStatus.ADJUSTED, OrderStatus.ACCEPTED).contains(status)) {
-            throw new Error("Order in status %s can't be cancelled", status);
+            throw Error("Order in status %s can't be cancelled", status)
         }
-        applyChange(OrderCancelledEvent.builder()
-                .aggregateId(aggregateId)
-                .version(getNextVersion())
-                .build());
+        applyChange(
+            OrderCancelledEvent(aggregateId, nextVersion)
+        )
     }
 
-    public void apply(OrderPlacedEvent event) {
-        this.status = OrderStatus.PLACED;
-        this.riderId = event.getRiderId();
-        this.price = event.getPrice();
-        this.route = event.getRoute();
-        this.placedDate = event.getCreatedDate();
+    fun apply(event: OrderPlacedEvent) {
+        status = OrderStatus.PLACED
+        riderId = event.riderId
+        price = event.price
+        route = event.route
+        placedDate = event.createdDate
     }
 
-    public void apply(OrderPriceAdjustedEvent event) {
-        this.status = OrderStatus.ADJUSTED;
-        this.price = event.getNewPrice();
+    fun apply(event: OrderPriceAdjustedEvent) {
+        status = OrderStatus.ADJUSTED
+        price = event.newPrice
     }
 
-    public void apply(OrderAcceptedEvent event) {
-        this.status = OrderStatus.ACCEPTED;
-        this.driverId = event.getDriverId();
-        this.acceptedDate = event.getCreatedDate();
+    fun apply(event: OrderAcceptedEvent) {
+        status = OrderStatus.ACCEPTED
+        driverId = event.driverId
+        acceptedDate = event.createdDate
     }
 
-    public void apply(OrderCompletedEvent event) {
-        this.status = OrderStatus.COMPLETED;
-        this.completedDate = event.getCreatedDate();
+    fun apply(event: OrderCompletedEvent) {
+        status = OrderStatus.COMPLETED
+        completedDate = event.createdDate
     }
 
-    public void apply(OrderCancelledEvent event) {
-        this.status = OrderStatus.CANCELLED;
-        this.cancelledDate = event.getCreatedDate();
+    fun apply(event: OrderCancelledEvent) {
+        status = OrderStatus.CANCELLED
+        cancelledDate = event.createdDate
     }
 
-    @Override
-    public AggregateType getAggregateType() {
-        return AggregateType.ORDER;
-    }
+    override val aggregateType = AggregateType.ORDER
 
-    public OrderStatus getStatus() {
-        return this.status;
-    }
-
-    public UUID getRiderId() {
-        return this.riderId;
-    }
-
-    public BigDecimal getPrice() {
-        return this.price;
-    }
-
-    public List<WaypointDto> getRoute() {
-        return this.route;
-    }
-
-    public UUID getDriverId() {
-        return this.driverId;
-    }
-
-    public Instant getPlacedDate() {
-        return this.placedDate;
-    }
-
-    public Instant getAcceptedDate() {
-        return this.acceptedDate;
-    }
-
-    public Instant getCompletedDate() {
-        return this.completedDate;
-    }
-
-    public Instant getCancelledDate() {
-        return this.cancelledDate;
-    }
-
-    public String toString() {
-        return "OrderAggregate(super=" + super.toString() + ", status=" + this.getStatus() + ", riderId=" + this.getRiderId() + ", price=" + this.getPrice() + ", route=" + this.getRoute() + ", driverId=" + this.getDriverId() + ", placedDate=" + this.getPlacedDate() + ", acceptedDate=" + this.getAcceptedDate() + ", completedDate=" + this.getCompletedDate() + ", cancelledDate=" + this.getCancelledDate() + ")";
+    override fun toString(): String {
+        return "OrderAggregate(super=" + super.toString() + ", status=" + status + ", riderId=" + riderId + ", price=" + price + ", route=" + route + ", driverId=" + driverId + ", placedDate=" + placedDate + ", acceptedDate=" + acceptedDate + ", completedDate=" + completedDate + ", cancelledDate=" + cancelledDate + ")"
     }
 }

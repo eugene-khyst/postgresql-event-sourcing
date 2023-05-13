@@ -1,24 +1,21 @@
-package com.example.eventsourcing.service.command;
+package com.example.eventsourcing.service.command
 
-import com.example.eventsourcing.domain.Aggregate;
-import com.example.eventsourcing.domain.command.Command;
-import com.example.eventsourcing.domain.command.PlaceOrderCommand;
-import org.slf4j.Logger;
+import com.example.eventsourcing.domain.Aggregate
+import com.example.eventsourcing.domain.command.Command
+import com.example.eventsourcing.domain.command.PlaceOrderCommand
+import org.slf4j.LoggerFactory
 
-public class PlaceOrderCommandHandler implements CommandHandler<PlaceOrderCommand> {
-
-    private static final Logger log = org.slf4j.LoggerFactory.getLogger(PlaceOrderCommandHandler.class);
-
-    @Override
-    public void handle(Aggregate aggregate, Command command) {
+class PlaceOrderCommandHandler : CommandHandler<PlaceOrderCommand> {
+    override fun handle(aggregate: Aggregate?, command: Command?) {
         // Add additional business logic here.
-        aggregate.process(command);
+        aggregate!!.process(command!!)
         // Also, add additional business logic here.
         // Read other aggregates using AggregateStore.
     }
 
-    @Override
-    public Class<PlaceOrderCommand> getCommandType() {
-        return PlaceOrderCommand.class;
+    override val commandType = PlaceOrderCommand::class.java
+
+    companion object {
+        private val log = LoggerFactory.getLogger(PlaceOrderCommandHandler::class.java)
     }
 }

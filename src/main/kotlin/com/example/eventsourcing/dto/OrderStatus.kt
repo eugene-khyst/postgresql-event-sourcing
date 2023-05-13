@@ -1,6 +1,6 @@
-package com.example.eventsourcing.dto;
+package com.example.eventsourcing.dto
 
-public enum OrderStatus {
+enum class OrderStatus {
     PLACED,
     ADJUSTED,
     ACCEPTED,

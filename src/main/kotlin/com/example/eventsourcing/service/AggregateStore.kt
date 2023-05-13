@@ -1,128 +1,120 @@
-package com.example.eventsourcing.service;
+package com.example.eventsourcing.service
 
-import com.example.eventsourcing.config.EventSourcingProperties;
-import com.example.eventsourcing.config.EventSourcingProperties.SnapshottingProperties;
-import com.example.eventsourcing.domain.Aggregate;
-import com.example.eventsourcing.domain.AggregateType;
-import com.example.eventsourcing.domain.event.Event;
-import com.example.eventsourcing.domain.event.EventWithId;
-import com.example.eventsourcing.error.OptimisticConcurrencyControlError;
-import com.example.eventsourcing.repository.AggregateRepository;
-import com.example.eventsourcing.repository.EventRepository;
-import jakarta.annotation.Nullable;
-import org.slf4j.Logger;
+import com.example.eventsourcing.config.EventSourcingProperties
+import com.example.eventsourcing.config.EventSourcingProperties.SnapshottingProperties
+import com.example.eventsourcing.domain.Aggregate
+import com.example.eventsourcing.domain.AggregateType
+import com.example.eventsourcing.domain.event.Event
+import com.example.eventsourcing.domain.event.EventWithId
+import com.example.eventsourcing.error.OptimisticConcurrencyControlError
+import com.example.eventsourcing.repository.AggregateRepository
+import com.example.eventsourcing.repository.EventRepository
+import org.slf4j.LoggerFactory
+import java.util.*
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-public class AggregateStore {
-
-    private static final Logger log = org.slf4j.LoggerFactory.getLogger(AggregateStore.class);
-    private final AggregateRepository aggregateRepository;
-    private final EventRepository eventRepository;
-    private final EventSourcingProperties properties;
-
-    public AggregateStore(AggregateRepository aggregateRepository, EventRepository eventRepository, EventSourcingProperties properties) {
-        this.aggregateRepository = aggregateRepository;
-        this.eventRepository = eventRepository;
-        this.properties = properties;
-    }
-
-    public List<EventWithId<Event>> saveAggregate(Aggregate aggregate) {
-        log.debug("Saving aggregate {}", aggregate);
-
-        AggregateType aggregateType = aggregate.getAggregateType();
-        UUID aggregateId = aggregate.getAggregateId();
-        aggregateRepository.createAggregateIfAbsent(aggregateType, aggregateId);
-
-        int expectedVersion = aggregate.getBaseVersion();
-        int newVersion = aggregate.getVersion();
+class AggregateStore(
+    private val aggregateRepository: AggregateRepository,
+    private val eventRepository: EventRepository,
+    private val properties: EventSourcingProperties
+) {
+    fun saveAggregate(aggregate: Aggregate): List<EventWithId<Event>> {
+        log.debug("Saving aggregate {}", aggregate)
+        val aggregateType = aggregate.aggregateType
+        val aggregateId = aggregate.aggregateId
+        aggregateRepository.createAggregateIfAbsent(aggregateType, aggregateId)
+        val expectedVersion = aggregate.baseVersion
+        val newVersion = aggregate.version
         if (!aggregateRepository.checkAndUpdateAggregateVersion(aggregateId, expectedVersion, newVersion)) {
-            log.warn("Optimistic concurrency control error in aggregate {} {}: " +
-                            "actual version doesn't match expected version {}",
-                    aggregateType, aggregateId, expectedVersion);
-            throw new OptimisticConcurrencyControlError(expectedVersion);
+            log.warn(
+                "Optimistic concurrency control error in aggregate {} {}: " +
+                        "actual version doesn't match expected version {}",
+                aggregateType, aggregateId, expectedVersion
+            )
+            throw OptimisticConcurrencyControlError(expectedVersion.toLong())
         }
-
-        SnapshottingProperties snapshotting = properties.getSnapshotting(aggregateType);
-        List<Event> changes = aggregate.getChanges();
-        List<EventWithId<Event>> newEvents = new ArrayList<>();
-        for (Event event : changes) {
-            log.info("Appending {} event: {}", aggregateType, event);
-            EventWithId<Event> newEvent = eventRepository.appendEvent(event);
-            newEvents.add(newEvent);
-            createAggregateSnapshot(snapshotting, aggregate);
+        val snapshotting = properties.getSnapshotting(aggregateType)
+        val changes = aggregate.changes
+        val newEvents: MutableList<EventWithId<Event>> = ArrayList()
+        for (event in changes) {
+            log.info("Appending {} event: {}", aggregateType, event)
+            val newEvent: EventWithId<Event> = eventRepository.appendEvent<Event>(event)
+            newEvents.add(newEvent)
+            createAggregateSnapshot(snapshotting, aggregate)
         }
-        return newEvents;
+        return newEvents
     }
 
-    private void createAggregateSnapshot(SnapshottingProperties snapshotting,
-                                         Aggregate aggregate) {
-        if (snapshotting.enabled() &&
-                snapshotting.nthEvent() > 1 &&
-                aggregate.getVersion() % snapshotting.nthEvent() == 0) {
-            log.info("Creating {} aggregate {} version {} snapshot",
-                    aggregate.getAggregateType(), aggregate.getAggregateId(), aggregate.getVersion());
-            aggregateRepository.createAggregateSnapshot(aggregate);
+    private fun createAggregateSnapshot(
+        snapshotting: SnapshottingProperties,
+        aggregate: Aggregate?
+    ) {
+        if (snapshotting.enabled && snapshotting.nthEvent > 1 && aggregate!!.version % snapshotting.nthEvent == 0) {
+            log.info(
+                "Creating {} aggregate {} version {} snapshot",
+                aggregate.aggregateType, aggregate.aggregateId, aggregate.version
+            )
+            aggregateRepository.createAggregateSnapshot(aggregate)
         }
     }
 
-    public Aggregate readAggregate(AggregateType aggregateType,
-                                   UUID aggregateId) {
-        return readAggregate(aggregateType, aggregateId, null);
-    }
-
-    public Aggregate readAggregate(AggregateType aggregateType,
-                                   UUID aggregateId,
-                                   @Nullable Integer version) {
-        log.debug("Reading {} aggregate {}", aggregateType, aggregateId);
-        SnapshottingProperties snapshotting = properties.getSnapshotting(aggregateType);
-        Aggregate aggregate;
-        if (snapshotting.enabled()) {
-            aggregate = readAggregateFromSnapshot(aggregateId, version)
-                    .orElseGet(() -> {
-                        log.debug("Aggregate {} snapshot not found", aggregateId);
-                        return readAggregateFromEvents(aggregateType, aggregateId, version);
-                    });
-
+    fun readAggregate(
+        aggregateType: AggregateType,
+        aggregateId: UUID,
+        version: Int? = null
+    ): Aggregate {
+        log.debug("Reading {} aggregate {}", aggregateType, aggregateId)
+        val (enabled) = properties.getSnapshotting(aggregateType)
+        val aggregate: Aggregate
+        aggregate = if (enabled) {
+            readAggregateFromSnapshot(aggregateId, version)
+                .orElseGet {
+                    log.debug("Aggregate {} snapshot not found", aggregateId)
+                    readAggregateFromEvents(aggregateType, aggregateId, version)
+                }
         } else {
-            aggregate = readAggregateFromEvents(aggregateType, aggregateId, version);
+            readAggregateFromEvents(aggregateType, aggregateId, version)
         }
-        log.debug("Read aggregate {}", aggregate);
-        return aggregate;
+        log.debug("Read aggregate {}", aggregate)
+        return aggregate
     }
 
-    private Optional<Aggregate> readAggregateFromSnapshot(UUID aggregateId,
-                                                          @Nullable Integer aggregateVersion) {
+    private fun readAggregateFromSnapshot(
+        aggregateId: UUID,
+        aggregateVersion: Int? = null
+    ): Optional<Aggregate> {
         return aggregateRepository.readAggregateSnapshot(aggregateId, aggregateVersion)
-                .map(aggregate -> {
-                    int snapshotVersion = aggregate.getVersion();
-                    log.debug("Read aggregate {} snapshot version {}", aggregateId, snapshotVersion);
-                    if (aggregateVersion == null || snapshotVersion < aggregateVersion) {
-                        var events = eventRepository.readEvents(aggregateId, snapshotVersion, aggregateVersion)
-                                .stream()
-                                .map(EventWithId::event)
-                                .toList();
-                        log.debug("Read {} events after version {} for aggregate {}",
-                                events.size(), snapshotVersion, aggregateId);
-                        aggregate.loadFromHistory(events);
-                    }
-                    return aggregate;
-                });
+            .map { aggregate: Aggregate ->
+                val snapshotVersion = aggregate.version
+                log.debug("Read aggregate {} snapshot version {}", aggregateId, snapshotVersion)
+                if (aggregateVersion == null || snapshotVersion < aggregateVersion) {
+                    val events = eventRepository.readEvents(aggregateId, snapshotVersion, aggregateVersion)
+                        .map { it.event }
+                        .toList()
+                    log.debug(
+                        "Read {} events after version {} for aggregate {}",
+                        events.size, snapshotVersion, aggregateId
+                    )
+                    aggregate.loadFromHistory(events)
+                }
+                aggregate
+            }
     }
 
-    private Aggregate readAggregateFromEvents(AggregateType aggregateType,
-                                              UUID aggregateId,
-                                              @Nullable Integer aggregateVersion) {
-        var events = eventRepository.readEvents(aggregateId, null, aggregateVersion)
-                .stream()
-                .map(EventWithId::event)
-                .toList();
-        log.debug("Read {} events for aggregate {}", events.size(), aggregateId);
-        Aggregate aggregate = aggregateType.newInstance(aggregateId);
-        aggregate.loadFromHistory(events);
-        return aggregate;
+    private fun readAggregateFromEvents(
+        aggregateType: AggregateType,
+        aggregateId: UUID,
+        aggregateVersion: Int? = null
+    ): Aggregate {
+        val events = eventRepository.readEvents(aggregateId, null, aggregateVersion)
+            .map { it.event }
+            .toList()
+        log.debug("Read {} events for aggregate {}", events.size, aggregateId)
+        val aggregate = aggregateType.newInstance<Aggregate>(aggregateId)
+        aggregate.loadFromHistory(events)
+        return aggregate
+    }
+
+    companion object {
+        private val log = LoggerFactory.getLogger(AggregateStore::class.java)
     }
 }
