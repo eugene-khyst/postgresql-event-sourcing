@@ -45,7 +45,6 @@ import org.http4k.routing.routes
 import org.http4k.server.Undertow
 import org.http4k.server.asServer
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository
-import org.springframework.http.ResponseEntity
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.kafka.config.TopicBuilder
 import org.springframework.kafka.core.DefaultKafkaProducerFactory
@@ -59,13 +58,6 @@ import java.lang.reflect.InvocationTargetException
 import java.util.*
 
 const val TOPIC_ORDER_EVENTS = "order-events"
-
-
-private inline fun <reified T : Any> ResponseEntity<T>.toHttp4kResponse() =
-    Response(Status(this.statusCode.value(), null))
-        .headers(this.headers.map { it.key to it.value.firstOrNull() }.toList()).let {
-            if (this.body != null) it.with(Body.auto<T>().toLens() of body) else it
-        }
 
 fun kafkaTemplate(kafkaBootstrapServers: String): KafkaTemplate<String, String> {
     val props = Properties()
@@ -93,6 +85,7 @@ fun kafkaTemplate(kafkaBootstrapServers: String): KafkaTemplate<String, String> 
     val producerFactory: ProducerFactory<String, String> = DefaultKafkaProducerFactory(configs)
     return KafkaTemplate(producerFactory)
 }
+
 val objectMapper: ObjectMapper = jacksonObjectMapper().also {
     it.findAndRegisterModules()
     it.enable(SerializationFeature.WRITE_ENUMS_USING_TO_STRING)
@@ -190,13 +183,13 @@ fun app(kafkaBootstrapServers: String): RoutingHttpHandler {
     }
     return ServerFilters.CatchAll(errorHandler).then(
         routes(
-            "/orders" bind Method.GET to { request: Request -> ordersController.orders.toHttp4kResponse() },
+            "/orders" bind Method.GET to { request: Request -> ordersController.orders() },
             "/orders" bind Method.POST to { request: Request ->
                 ordersController.placeOrder(
                     objectMapper.readTree(
                         request.bodyString()
                     )
-                ).toHttp4kResponse()
+                )
             },
             "/orders/{orderId}" bind Method.GET to { request: Request ->
                 ordersController.getOrder(
@@ -205,7 +198,7 @@ fun app(kafkaBootstrapServers: String): RoutingHttpHandler {
                             "orderId"
                         )
                     )
-                ).toHttp4kResponse()
+                )
             },
             "/orders/{orderId}" bind Method.PUT to { request: Request ->
                 ordersController.modifyOrder(
@@ -217,7 +210,7 @@ fun app(kafkaBootstrapServers: String): RoutingHttpHandler {
                     objectMapper.readTree(
                         request.bodyString()
                     )
-                ).toHttp4kResponse()
+                )
             },
         )
     )

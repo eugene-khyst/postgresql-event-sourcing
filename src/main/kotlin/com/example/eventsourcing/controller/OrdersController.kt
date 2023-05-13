@@ -8,8 +8,15 @@ import com.example.eventsourcing.service.CommandProcessor
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.http4k.core.Body
+import org.http4k.core.Response
+import org.http4k.core.Status
+import org.http4k.core.Status.Companion.BAD_REQUEST
+import org.http4k.core.Status.Companion.NOT_FOUND
+import org.http4k.core.Status.Companion.OK
+import org.http4k.core.with
+import org.http4k.format.Jackson.auto
 import org.springframework.data.jpa.repository.JpaRepository
-import org.springframework.http.ResponseEntity
 import java.math.BigDecimal
 import java.util.*
 
@@ -18,21 +25,24 @@ class OrdersController(
     private val commandProcessor: CommandProcessor,
     private val orderProjectionRepository: JpaRepository<OrderProjection, UUID>
 ) {
-    fun placeOrder(request: JsonNode): ResponseEntity<JsonNode> {
+    fun placeOrder(request: JsonNode): Response {
         val order = commandProcessor.process(PlaceOrderCommand(
             UUID.fromString(request["riderId"].asText()),
             BigDecimal(request["price"].asText()),
             objectMapper.readValue(
                 objectMapper.treeAsTokens(request["route"]), object : TypeReference<List<WaypointDto>>() {}
             )))
-        return ResponseEntity.ok()
-            .body(
-                objectMapper.createObjectNode()
-                    .put("orderId", order.aggregateId.toString())
+        return Response(Status.OK)
+            .with(
+                bodyOf(
+                    objectMapper.createObjectNode()
+                        .put("orderId", order.aggregateId.toString())
+                )
+
             )
     }
 
-    fun modifyOrder(orderId: UUID, request: JsonNode): ResponseEntity<Any> {
+    fun modifyOrder(orderId: UUID, request: JsonNode): Response {
         val newStatus = OrderStatus.valueOf(request["status"].asText())
         return when (newStatus) {
             OrderStatus.ADJUSTED -> {
@@ -42,7 +52,7 @@ class OrdersController(
                         BigDecimal(request["price"].asText())
                     )
                 )
-                ResponseEntity.ok().build()
+                Response(OK)
             }
 
             OrderStatus.ACCEPTED -> {
@@ -52,32 +62,33 @@ class OrdersController(
                         UUID.fromString(request["driverId"].asText())
                     )
                 )
-                ResponseEntity.ok().build()
+                Response(OK)
             }
 
             OrderStatus.COMPLETED -> {
                 commandProcessor.process(CompleteOrderCommand(orderId))
-                ResponseEntity.ok().build()
+                Response(OK)
             }
 
             OrderStatus.CANCELLED -> {
                 commandProcessor.process(CancelOrderCommand(orderId))
-                ResponseEntity.ok().build()
+                Response(OK)
             }
 
             else -> {
-                ResponseEntity.badRequest().build()
+                Response(BAD_REQUEST)
             }
         }
     }
 
-    val orders: ResponseEntity<List<OrderProjection>>
-        get() = ResponseEntity.ok(orderProjectionRepository.findAll())
+    fun orders(): Response = Response(OK).with(bodyOf(orderProjectionRepository.findAll()))
 
-    fun getOrder(orderId: UUID): ResponseEntity<OrderProjection> {
+    fun getOrder(orderId: UUID): Response {
         return orderProjectionRepository
             .findById(orderId)
-            .map<ResponseEntity<OrderProjection>> { body: OrderProjection? -> ResponseEntity.ok(body) }
-            .orElse(ResponseEntity.notFound().build())
+            .map { body: OrderProjection -> Response(OK).with(bodyOf(body)) }
+            .orElse(Response(NOT_FOUND))
     }
+
+    private inline fun <reified T : Any> bodyOf(body: T): (Response) -> Response = Body.auto<T>().toLens() of body
 }
