@@ -23,7 +23,7 @@ internal abstract class AbstractContainerBaseTest {
             KAFKA = KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.3.2")).also {
                 it.start()
             }
-            APP = app().asServer(Undertow(8080)).also {
+            APP = app(KAFKA!!.bootstrapServers).asServer(Undertow(8080)).also {
                 it.start()
             }
         }

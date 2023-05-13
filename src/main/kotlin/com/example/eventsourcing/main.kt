@@ -5,11 +5,14 @@ import com.example.eventsourcing.controller.OrdersController
 import com.example.eventsourcing.projection.OrderProjection
 import com.example.eventsourcing.repository.AggregateRepository
 import com.example.eventsourcing.repository.EventRepository
+import com.example.eventsourcing.repository.EventSubscriptionRepository
 import com.example.eventsourcing.repository.OrderProjectionRepository
 import com.example.eventsourcing.service.AggregateStore
 import com.example.eventsourcing.service.CommandProcessor
+import com.example.eventsourcing.service.EventSubscriptionProcessor
 import com.example.eventsourcing.service.command.DefaultCommandHandler
 import com.example.eventsourcing.service.command.PlaceOrderCommandHandler
+import com.example.eventsourcing.service.event.OrderIntegrationEventSender
 import com.example.eventsourcing.service.event.OrderProjectionUpdater
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.DeserializationFeature
@@ -19,6 +22,11 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import org.apache.kafka.clients.producer.ProducerConfig
+import org.apache.kafka.common.serialization.StringSerializer
 import org.flywaydb.core.Flyway
 import org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
 import org.hibernate.jpa.HibernatePersistenceProvider
@@ -40,6 +48,9 @@ import org.springframework.data.jpa.repository.support.SimpleJpaRepository
 import org.springframework.data.repository.query.FluentQuery
 import org.springframework.http.ResponseEntity
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
+import org.springframework.kafka.core.DefaultKafkaProducerFactory
+import org.springframework.kafka.core.KafkaTemplate
+import org.springframework.kafka.core.ProducerFactory
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter
 import java.io.PrintWriter
@@ -63,7 +74,7 @@ val objectMapper: ObjectMapper = jacksonObjectMapper().also {
     it.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 }
 
-fun app(): RoutingHttpHandler {
+fun app(kafkaBootstrapServers: String): RoutingHttpHandler {
     val dataSource = HikariDataSource(HikariConfig("/hikari.properties"))
     val flyway = Flyway.configure()
         .dataSource(dataSource)
@@ -173,6 +184,27 @@ fun app(): RoutingHttpHandler {
         listOf(OrderProjectionUpdater(orderProjectionRepository))
     )
 
+    val eventSubscriptionProcessor =
+        EventSubscriptionProcessor(EventSubscriptionRepository(namedParameterJdbcTemplate), eventRepository)
+
+    val configs = mapOf(
+        ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to kafkaBootstrapServers,
+        ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
+        ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java
+    )
+
+    val producerFactory: ProducerFactory<String, String> = DefaultKafkaProducerFactory(configs)
+    val kafkaTemplate = KafkaTemplate(producerFactory)
+    val orderIntegrationEventSender = OrderIntegrationEventSender(aggregateStore, kafkaTemplate, objectMapper)
+
+    GlobalScope.launch {
+        // Perform your background task here
+        while (true) {
+            delay(1000) // Delay for 1 second
+            eventSubscriptionProcessor.processNewEvents(orderIntegrationEventSender)
+        }
+    }
+
     val ordersController = OrdersController(objectMapper, commandProcessor, orderProjectionRepository)
     val errorMessageLens = Body.auto<ErrorMessage>().toLens()
 
@@ -238,7 +270,7 @@ fun app(): RoutingHttpHandler {
 }
 
 fun main() {
-    val server = app().asServer(Undertow(9000)).start()
+    val server = app((System.getenv("KAFKA_BOOTSTRAP_SERVERS") ?: "localhost:9092")).asServer(Undertow(9000)).start()
 
     val client = ApacheClient()
 
