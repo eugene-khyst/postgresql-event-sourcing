@@ -4,14 +4,13 @@ import com.example.eventsourcing.dto.OrderStatus
 import com.fasterxml.jackson.annotation.JsonIgnore
 import jakarta.persistence.*
 import org.springframework.data.domain.Persistable
-import java.io.Serializable
 import java.math.BigDecimal
 import java.time.Instant
 import java.util.*
 
 @Entity
 @Table(name = "RM_ORDER")
-class OrderProjection : Persistable<UUID?>, Serializable {
+class OrderProjection : Persistable<UUID?> {
     @Id
     private var id: UUID? = null
     var version = 0
@@ -33,24 +32,6 @@ class OrderProjection : Persistable<UUID?>, Serializable {
     @JsonIgnore
     override fun isNew(): Boolean {
         return version <= 1
-    }
-
-    override fun equals(o: Any?): Boolean {
-        if (this === o) {
-            return true
-        }
-        if (o == null) {
-            return false
-        }
-        if (javaClass != o.javaClass) {
-            return false
-        }
-        val other = o as OrderProjection
-        return id == other.getId()
-    }
-
-    override fun hashCode(): Int {
-        return 1
     }
 
     override fun getId(): UUID? {

@@ -37,7 +37,7 @@ class AggregateStore(
         val newEvents: MutableList<EventWithId<Event>> = ArrayList()
         for (event in changes) {
             log.info("Appending {} event: {}", aggregateType, event)
-            val newEvent: EventWithId<Event> = eventRepository.appendEvent<Event>(event)
+            val newEvent: EventWithId<Event> = eventRepository.appendEvent(event)
             newEvents.add(newEvent)
             createAggregateSnapshot(snapshotting, aggregate)
         }
