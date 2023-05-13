@@ -11,11 +11,8 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import java.math.BigInteger
 import java.sql.ResultSet
-import java.sql.SQLException
 import java.sql.Types
 import java.util.*
-import java.util.Map
-import kotlin.collections.List
 
 class EventRepository(private val jdbcTemplate: NamedParameterJdbcTemplate, private val objectMapper: ObjectMapper) {
     fun <T : Event> appendEvent(event: Event): EventWithId<T> {
@@ -27,11 +24,11 @@ class EventRepository(private val jdbcTemplate: NamedParameterJdbcTemplate, priv
                             RETURNING ID, TRANSACTION_ID::text, EVENT_TYPE, JSON_DATA
                             
                             """.trimIndent(),
-                Map.of(
-                    "aggregateId", event.aggregateId,
-                    "version", event.version,
-                    "eventType", event.eventType.toString(),
-                    "jsonObj", objectMapper.writeValueAsString(event)
+                mapOf(
+                    "aggregateId" to event.aggregateId,
+                    "version" to event.version,
+                    "eventType" to event.eventType.toString(),
+                    "jsonObj" to objectMapper.writeValueAsString(event)
                 )
             ) { rs: ResultSet, rowNum: Int -> toEvent(rs, rowNum) }
             result[0]
@@ -67,7 +64,7 @@ class EventRepository(private val jdbcTemplate: NamedParameterJdbcTemplate, priv
     }
 
     fun readEventsAfterCheckpoint(
-        aggregateType: AggregateType?,
+        aggregateType: AggregateType,
         lastProcessedTransactionId: BigInteger,
         lastProcessedEventId: Long
     ): List<EventWithId<Event>> {
@@ -85,15 +82,14 @@ class EventRepository(private val jdbcTemplate: NamedParameterJdbcTemplate, priv
                          ORDER BY e.TRANSACTION_ID ASC, e.ID ASC
                         
                         """.trimIndent(),
-            Map.of(
-                "aggregateType", aggregateType.toString(),
-                "lastProcessedTransactionId", lastProcessedTransactionId.toString(),
-                "lastProcessedEventId", lastProcessedEventId
+            mapOf(
+                "aggregateType" to aggregateType.toString(),
+                "lastProcessedTransactionId" to lastProcessedTransactionId.toString(),
+                "lastProcessedEventId" to lastProcessedEventId
             )
         ) { rs: ResultSet, rowNum: Int -> toEvent(rs, rowNum) }
     }
 
-    @Throws(SQLException::class)
     private fun <T : Event> toEvent(rs: ResultSet, rowNum: Int): EventWithId<T> {
         val id = rs.getLong("ID")
         val transactionId = rs.getString("TRANSACTION_ID")

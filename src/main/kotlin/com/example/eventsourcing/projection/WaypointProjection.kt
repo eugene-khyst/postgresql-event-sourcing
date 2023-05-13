@@ -24,7 +24,7 @@ class WaypointProjection : Serializable {
         val `other$address`: Any? = other.address
         if (if (`this$address` == null) `other$address` != null else `this$address` != `other$address`) return false
         if (java.lang.Double.compare(latitude, other.latitude) != 0) return false
-        return if (java.lang.Double.compare(longitude, other.longitude) != 0) false else true
+        return java.lang.Double.compare(longitude, other.longitude) == 0
     }
 
     protected fun canEqual(other: Any?): Boolean {

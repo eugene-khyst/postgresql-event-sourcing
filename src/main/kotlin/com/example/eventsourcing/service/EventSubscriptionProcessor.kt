@@ -15,19 +15,19 @@ class EventSubscriptionProcessor(
         log.debug("Handling new events for subscription {}", subscriptionName)
         subscriptionRepository.createSubscriptionIfAbsent(subscriptionName)
         subscriptionRepository.readCheckpointAndLockSubscription(subscriptionName).ifPresentOrElse(
-            { checkpoint: EventSubscriptionCheckpoint? ->
+            { checkpoint: EventSubscriptionCheckpoint ->
                 log.debug("Acquired lock on subscription {}, checkpoint = {}", subscriptionName, checkpoint)
                 val events = eventRepository.readEventsAfterCheckpoint(
                     eventHandler.aggregateType,
-                    checkpoint!!.lastProcessedTransactionId,
-                    checkpoint!!.lastProcessedEventId
+                    checkpoint.lastProcessedTransactionId,
+                    checkpoint.lastProcessedEventId
                 )
-                log.debug("Fetched {} new event(s) for subscription {}", events!!.size, subscriptionName)
+                log.debug("Fetched {} new event(s) for subscription {}", events.size, subscriptionName)
                 if (!events.isEmpty()) {
                     events.forEach { eventHandler.handleEvent(it) }
                     val lastEvent = events[events.size - 1]
                     subscriptionRepository.updateEventSubscription(
-                        subscriptionName, lastEvent!!.transactionId, lastEvent.id
+                        subscriptionName, lastEvent.transactionId, lastEvent.id
                     )
                 }
             }

@@ -14,12 +14,12 @@ import java.util.*
 class OrderProjectionUpdater(private val repository: JpaRepository<OrderProjection, UUID>) : SyncEventHandler {
     private val mapper = OrderMapper()
 
-    override fun handleEvents(events: List<EventWithId<Event>>, aggregate: Aggregate?) {
+    override fun handleEvents(events: List<EventWithId<Event>>, aggregate: Aggregate) {
         log.debug("Updating read model for order {}", aggregate)
-        updateOrderProjection(aggregate as OrderAggregate?)
+        updateOrderProjection(aggregate as OrderAggregate)
     }
 
-    private fun updateOrderProjection(orderAggregate: OrderAggregate?) {
+    private fun updateOrderProjection(orderAggregate: OrderAggregate) {
         val orderProjection = mapper.toProjection(orderAggregate)
         log.info("Saving order projection {}", orderProjection)
         repository.save(orderProjection)

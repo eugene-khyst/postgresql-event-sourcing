@@ -8,7 +8,7 @@ import com.example.eventsourcing.domain.event.EventWithId
 interface SyncEventHandler {
     fun handleEvents(
         events: List<EventWithId<Event>>,
-        aggregate: Aggregate?
+        aggregate: Aggregate
     )
 
     val aggregateType: AggregateType

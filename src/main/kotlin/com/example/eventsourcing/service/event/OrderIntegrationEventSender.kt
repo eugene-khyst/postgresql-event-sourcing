@@ -41,7 +41,7 @@ class OrderIntegrationEventSender(
         }
     }
 
-    override val aggregateType: AggregateType?
+    override val aggregateType: AggregateType
         get() = AggregateType.ORDER
 
     companion object {

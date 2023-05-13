@@ -4,12 +4,10 @@ import com.example.eventsourcing.domain.event.EventSubscriptionCheckpoint
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import java.math.BigInteger
 import java.sql.ResultSet
-import java.sql.SQLException
 import java.util.*
-import java.util.Map
 
 class EventSubscriptionRepository(private val jdbcTemplate: NamedParameterJdbcTemplate) {
-    fun createSubscriptionIfAbsent(subscriptionName: String?) {
+    fun createSubscriptionIfAbsent(subscriptionName: String) {
         jdbcTemplate.update(
             """
                         INSERT INTO ES_EVENT_SUBSCRIPTION (SUBSCRIPTION_NAME, LAST_TRANSACTION_ID, LAST_EVENT_ID)
@@ -17,11 +15,11 @@ class EventSubscriptionRepository(private val jdbcTemplate: NamedParameterJdbcTe
                         ON CONFLICT DO NOTHING
                         
                         """.trimIndent(),
-            Map.of("subscriptionName", subscriptionName)
+            mapOf("subscriptionName" to subscriptionName)
         )
     }
 
-    fun readCheckpointAndLockSubscription(subscriptionName: String?): Optional<EventSubscriptionCheckpoint?> {
+    fun readCheckpointAndLockSubscription(subscriptionName: String): Optional<EventSubscriptionCheckpoint> {
         return jdbcTemplate.query(
             """
                         SELECT LAST_TRANSACTION_ID::text,
@@ -31,13 +29,13 @@ class EventSubscriptionRepository(private val jdbcTemplate: NamedParameterJdbcTe
                            FOR UPDATE SKIP LOCKED
                         
                         """.trimIndent(),
-            Map.of("subscriptionName", subscriptionName)
+            mapOf("subscriptionName" to subscriptionName)
         ) { rs: ResultSet, rowNum: Int -> toEventSubscriptionCheckpoint(rs, rowNum) }
             .stream().findFirst()
     }
 
     fun updateEventSubscription(
-        subscriptionName: String?,
+        subscriptionName: String,
         lastProcessedTransactionId: BigInteger,
         lastProcessedEventId: Long
     ): Boolean {
@@ -49,16 +47,15 @@ class EventSubscriptionRepository(private val jdbcTemplate: NamedParameterJdbcTe
                          WHERE SUBSCRIPTION_NAME = :subscriptionName
                         
                         """.trimIndent(),
-            Map.of(
-                "subscriptionName", subscriptionName,
-                "lastProcessedTransactionId", lastProcessedTransactionId.toString(),
-                "lastProcessedEventId", lastProcessedEventId
+            mapOf(
+                "subscriptionName" to subscriptionName,
+                "lastProcessedTransactionId" to lastProcessedTransactionId.toString(),
+                "lastProcessedEventId" to lastProcessedEventId
             )
         )
         return updatedRows > 0
     }
 
-    @Throws(SQLException::class)
     private fun toEventSubscriptionCheckpoint(rs: ResultSet, rowNum: Int): EventSubscriptionCheckpoint {
         val lastProcessedTransactionId = rs.getString("LAST_TRANSACTION_ID")
         val lastProcessedEventId = rs.getLong("LAST_EVENT_ID")

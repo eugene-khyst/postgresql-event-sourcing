@@ -16,7 +16,7 @@ class OrderAggregate(aggregateId: UUID, version: Int) : Aggregate(aggregateId, v
         private set
     var price: BigDecimal? = null
         private set
-    var route: List<WaypointDto?>? = null
+    var route: List<WaypointDto> = emptyList()
         private set
     var driverId: UUID? = null
         private set
@@ -70,7 +70,7 @@ class OrderAggregate(aggregateId: UUID, version: Int) : Aggregate(aggregateId, v
         )
     }
 
-    fun process(command: CompleteOrderCommand?) {
+    fun process(command: CompleteOrderCommand) {
         if (status != OrderStatus.ACCEPTED) {
             throw Error("Order in status %s can't be completed", status)
         }
@@ -82,7 +82,7 @@ class OrderAggregate(aggregateId: UUID, version: Int) : Aggregate(aggregateId, v
         )
     }
 
-    fun process(command: CancelOrderCommand?) {
+    fun process(command: CancelOrderCommand) {
         if (!EnumSet.of(OrderStatus.PLACED, OrderStatus.ADJUSTED, OrderStatus.ACCEPTED).contains(status)) {
             throw Error("Order in status %s can't be cancelled", status)
         }

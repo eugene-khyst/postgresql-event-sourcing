@@ -1,4 +1,4 @@
-package com.example.eventsourcing;
+package com.example.eventsourcing
 
 import com.example.eventsourcing.config.EventSourcingProperties
 import com.example.eventsourcing.config.EventSourcingProperties.SnapshottingProperties
@@ -80,7 +80,7 @@ fun kafkaTemplate(kafkaBootstrapServers: String): KafkaTemplate<String, String> 
             .partitions(10)
             .replicas(1)
             .build()
-    );
+    )
 
     adminClient.createTopics(topics)
     val configs = mapOf(

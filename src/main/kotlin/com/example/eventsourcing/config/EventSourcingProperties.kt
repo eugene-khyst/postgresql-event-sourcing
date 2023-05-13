@@ -7,7 +7,6 @@ class EventSourcingProperties(private val snapshotting: Map<AggregateType, Snaps
         return snapshotting[aggregateType] ?: NO_SNAPSHOTTING
     }
 
-    @JvmRecord
     data class SnapshottingProperties(val enabled: Boolean, val nthEvent: Int)
     companion object {
         private val NO_SNAPSHOTTING = SnapshottingProperties(false, 0)

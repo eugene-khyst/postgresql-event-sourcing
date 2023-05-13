@@ -46,9 +46,9 @@ class AggregateStore(
 
     private fun createAggregateSnapshot(
         snapshotting: SnapshottingProperties,
-        aggregate: Aggregate?
+        aggregate: Aggregate
     ) {
-        if (snapshotting.enabled && snapshotting.nthEvent > 1 && aggregate!!.version % snapshotting.nthEvent == 0) {
+        if (snapshotting.enabled && snapshotting.nthEvent > 1 && aggregate.version % snapshotting.nthEvent == 0) {
             log.info(
                 "Creating {} aggregate {} version {} snapshot",
                 aggregate.aggregateType, aggregate.aggregateId, aggregate.version

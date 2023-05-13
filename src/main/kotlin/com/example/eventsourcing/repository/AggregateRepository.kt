@@ -8,7 +8,6 @@ import org.postgresql.util.PGobject
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import java.sql.ResultSet
-import java.sql.SQLException
 import java.sql.Types
 import java.util.*
 import java.util.Map
@@ -18,8 +17,8 @@ class AggregateRepository(
     private val objectMapper: ObjectMapper
 ) {
     fun createAggregateIfAbsent(
-        aggregateType: AggregateType?,
-        aggregateId: UUID?
+        aggregateType: AggregateType,
+        aggregateId: UUID
     ) {
         jdbcTemplate.update(
             """
@@ -36,7 +35,7 @@ class AggregateRepository(
     }
 
     fun checkAndUpdateAggregateVersion(
-        aggregateId: UUID?,
+        aggregateId: UUID,
         expectedVersion: Int,
         newVersion: Int
     ): Boolean {
@@ -57,7 +56,7 @@ class AggregateRepository(
         return updatedRows > 0
     }
 
-    fun createAggregateSnapshot(aggregate: Aggregate?) {
+    fun createAggregateSnapshot(aggregate: Aggregate) {
         try {
             jdbcTemplate.update(
                 """
@@ -66,7 +65,7 @@ class AggregateRepository(
                             
                             """.trimIndent(),
                 Map.of(
-                    "aggregateId", aggregate!!.aggregateId,
+                    "aggregateId", aggregate.aggregateId,
                     "version", aggregate.version,
                     "jsonObj", objectMapper.writeValueAsString(aggregate)
                 )
@@ -99,7 +98,6 @@ class AggregateRepository(
         ) { rs: ResultSet, rowNum: Int -> toAggregate(rs, rowNum) }.stream().findFirst()
     }
 
-    @Throws(SQLException::class)
     private fun toAggregate(rs: ResultSet, rowNum: Int): Aggregate {
         return try {
             val aggregateType = AggregateType.valueOf(rs.getString("AGGREGATE_TYPE"))
