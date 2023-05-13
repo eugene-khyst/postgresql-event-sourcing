@@ -14,8 +14,8 @@ class EventSubscriptionProcessor(
         val subscriptionName = eventHandler.subscriptionName
         log.debug("Handling new events for subscription {}", subscriptionName)
         subscriptionRepository.createSubscriptionIfAbsent(subscriptionName)
-        subscriptionRepository.readCheckpointAndLockSubscription(subscriptionName).ifPresentOrElse(
-            { checkpoint: EventSubscriptionCheckpoint ->
+        subscriptionRepository.readCheckpointAndLockSubscription(subscriptionName)
+            ?.let { checkpoint: EventSubscriptionCheckpoint ->
                 log.debug("Acquired lock on subscription {}, checkpoint = {}", subscriptionName, checkpoint)
                 val events = eventRepository.readEventsAfterCheckpoint(
                     eventHandler.aggregateType,
@@ -30,8 +30,7 @@ class EventSubscriptionProcessor(
                         subscriptionName, lastEvent.transactionId, lastEvent.id
                     )
                 }
-            }
-        ) { log.debug("Can't acquire lock on subscription {}", subscriptionName) }
+            } ?: log.debug("Can't acquire lock on subscription {}", subscriptionName)
     }
 
     companion object {

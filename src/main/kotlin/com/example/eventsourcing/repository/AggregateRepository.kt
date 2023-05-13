@@ -78,7 +78,7 @@ class AggregateRepository(
     fun readAggregateSnapshot(
         aggregateId: UUID,
         version: Int?
-    ): Optional<Aggregate> {
+    ): Aggregate? {
         val parameters = MapSqlParameterSource()
         parameters.addValue("aggregateId", aggregateId)
         parameters.addValue("version", version, Types.INTEGER)
@@ -95,7 +95,7 @@ class AggregateRepository(
                         
                         """.trimIndent(),
             parameters
-        ) { rs: ResultSet, rowNum: Int -> toAggregate(rs, rowNum) }.stream().findFirst()
+        ) { rs: ResultSet, rowNum: Int -> toAggregate(rs, rowNum) }.firstOrNull()
     }
 
     private fun toAggregate(rs: ResultSet, rowNum: Int): Aggregate {

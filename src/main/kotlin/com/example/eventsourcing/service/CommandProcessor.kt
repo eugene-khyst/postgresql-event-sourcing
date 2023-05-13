@@ -18,24 +18,23 @@ class CommandProcessor(
         val aggregateType = command.aggregateType
         val aggregateId = command.aggregateId
         val aggregate = aggregateStore.readAggregate(aggregateType, aggregateId)
-        commandHandlers.stream()
-            .filter { commandHandler: CommandHandler<out Command> -> commandHandler.commandType == command.javaClass }
-            .findFirst()
-            .ifPresentOrElse({ commandHandler: CommandHandler<out Command> ->
+        commandHandlers
+            .firstOrNull { commandHandler: CommandHandler<out Command> -> commandHandler.commandType == command.javaClass }
+            ?.let { commandHandler: CommandHandler<out Command> ->
                 log.debug(
                     "Handling command {} with {}",
                     command.javaClass.simpleName, commandHandler.javaClass.simpleName
                 )
                 commandHandler.handle(aggregate, command)
-            }) {
+            } ?: defaultCommandHandler.handle(aggregate, command)
+            .also {
                 log.debug(
                     "No specialized handler found, handling command {} with {}",
                     command.javaClass.simpleName, defaultCommandHandler.javaClass.simpleName
                 )
-                defaultCommandHandler.handle(aggregate, command)
             }
         val newEvents = aggregateStore.saveAggregate(aggregate)
-        aggregateChangesHandlers.stream()
+        aggregateChangesHandlers
             .filter { handler: SyncEventHandler -> handler.aggregateType === aggregateType }
             .forEach { handler: SyncEventHandler -> handler.handleEvents(newEvents, aggregate) }
         return aggregate

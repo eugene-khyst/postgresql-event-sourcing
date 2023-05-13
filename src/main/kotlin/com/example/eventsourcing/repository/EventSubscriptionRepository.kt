@@ -4,7 +4,6 @@ import com.example.eventsourcing.domain.event.EventSubscriptionCheckpoint
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import java.math.BigInteger
 import java.sql.ResultSet
-import java.util.*
 
 class EventSubscriptionRepository(private val jdbcTemplate: NamedParameterJdbcTemplate) {
     fun createSubscriptionIfAbsent(subscriptionName: String) {
@@ -19,7 +18,7 @@ class EventSubscriptionRepository(private val jdbcTemplate: NamedParameterJdbcTe
         )
     }
 
-    fun readCheckpointAndLockSubscription(subscriptionName: String): Optional<EventSubscriptionCheckpoint> {
+    fun readCheckpointAndLockSubscription(subscriptionName: String): EventSubscriptionCheckpoint? {
         return jdbcTemplate.query(
             """
                         SELECT LAST_TRANSACTION_ID::text,
@@ -31,7 +30,7 @@ class EventSubscriptionRepository(private val jdbcTemplate: NamedParameterJdbcTe
                         """.trimIndent(),
             mapOf("subscriptionName" to subscriptionName)
         ) { rs: ResultSet, rowNum: Int -> toEventSubscriptionCheckpoint(rs, rowNum) }
-            .stream().findFirst()
+            .firstOrNull()
     }
 
     fun updateEventSubscription(

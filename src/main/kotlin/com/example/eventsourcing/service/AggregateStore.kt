@@ -67,9 +67,8 @@ class AggregateStore(
         val aggregate: Aggregate
         aggregate = if (enabled) {
             readAggregateFromSnapshot(aggregateId, version)
-                .orElseGet {
+                ?: readAggregateFromEvents(aggregateType, aggregateId, version).also {
                     log.debug("Aggregate {} snapshot not found", aggregateId)
-                    readAggregateFromEvents(aggregateType, aggregateId, version)
                 }
         } else {
             readAggregateFromEvents(aggregateType, aggregateId, version)
@@ -81,9 +80,9 @@ class AggregateStore(
     private fun readAggregateFromSnapshot(
         aggregateId: UUID,
         aggregateVersion: Int? = null
-    ): Optional<Aggregate> {
+    ): Aggregate? {
         return aggregateRepository.readAggregateSnapshot(aggregateId, aggregateVersion)
-            .map { aggregate: Aggregate ->
+            ?.let { aggregate: Aggregate ->
                 val snapshotVersion = aggregate.version
                 log.debug("Read aggregate {} snapshot version {}", aggregateId, snapshotVersion)
                 if (aggregateVersion == null || snapshotVersion < aggregateVersion) {
