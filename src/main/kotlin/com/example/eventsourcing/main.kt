@@ -8,7 +8,6 @@ import com.example.eventsourcing.projection.OrderProjection
 import com.example.eventsourcing.repository.AggregateRepository
 import com.example.eventsourcing.repository.EventRepository
 import com.example.eventsourcing.repository.EventSubscriptionRepository
-import com.example.eventsourcing.repository.OrderProjectionRepository
 import com.example.eventsourcing.service.AggregateStore
 import com.example.eventsourcing.service.CommandProcessor
 import com.example.eventsourcing.service.EventSubscriptionProcessor
@@ -45,12 +44,7 @@ import org.http4k.routing.path
 import org.http4k.routing.routes
 import org.http4k.server.Undertow
 import org.http4k.server.asServer
-import org.springframework.data.domain.Example
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.Pageable
-import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.repository.support.SimpleJpaRepository
-import org.springframework.data.repository.query.FluentQuery
 import org.springframework.http.ResponseEntity
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.kafka.config.TopicBuilder
@@ -63,7 +57,6 @@ import java.io.PrintWriter
 import java.io.StringWriter
 import java.lang.reflect.InvocationTargetException
 import java.util.*
-import java.util.function.Function
 
 const val TOPIC_ORDER_EVENTS = "order-events"
 
@@ -139,78 +132,8 @@ fun app(kafkaBootstrapServers: String): RoutingHttpHandler {
     }.`object`
 
     val entityManager = entityManagerFactory.createEntityManager()
-    val repository = SimpleJpaRepository<OrderProjection, UUID>(OrderProjection::class.java, entityManager)
-
-    val orderProjectionRepository = object : OrderProjectionRepository {
-        override fun <S : OrderProjection?> save(entity: S): S = repository.save(entity)
-
-        override fun <S : OrderProjection?> saveAll(entities: MutableIterable<S>): MutableList<S> =
-            repository.saveAll(entities)
-
-        override fun findById(id: UUID): Optional<OrderProjection> = repository.findById(id)
-
-        override fun existsById(id: UUID): Boolean = repository.existsById(id)
-
-        override fun <S : OrderProjection?> findAll(example: Example<S>): MutableList<S> = repository.findAll(example)
-
-        override fun <S : OrderProjection?> findAll(example: Example<S>, sort: Sort): MutableList<S> =
-            repository.findAll(example, sort)
-
-        override fun findAll(): MutableList<OrderProjection> = repository.findAll()
-
-        override fun findAll(sort: Sort): MutableList<OrderProjection> = repository.findAll(sort)
-
-        override fun findAll(pageable: Pageable): Page<OrderProjection> = repository.findAll(pageable)
-
-        override fun <S : OrderProjection?> findAll(example: Example<S>, pageable: Pageable): Page<S> =
-            repository.findAll(example, pageable)
-
-        override fun findAllById(ids: MutableIterable<UUID>): MutableList<OrderProjection> = repository.findAllById(ids)
-
-        override fun count(): Long = repository.count()
-
-        override fun <S : OrderProjection?> count(example: Example<S>): Long = repository.count(example)
-
-        override fun deleteById(id: UUID) = repository.deleteById(id)
-
-        override fun delete(entity: OrderProjection) = repository.delete(entity)
-
-        override fun deleteAllById(ids: MutableIterable<UUID>) = repository.deleteAllById(ids)
-
-        override fun deleteAll(entities: MutableIterable<OrderProjection>) = repository.deleteAll(entities)
-
-        override fun deleteAll() = repository.deleteAll()
-
-        override fun <S : OrderProjection?> findOne(example: Example<S>): Optional<S> = repository.findOne(example)
-
-        override fun <S : OrderProjection?> exists(example: Example<S>): Boolean = repository.exists(example)
-
-        override fun <S : OrderProjection?, R : Any?> findBy(
-            example: Example<S>,
-            queryFunction: Function<FluentQuery.FetchableFluentQuery<S>, R>
-        ): R = repository.findBy(example, queryFunction)
-
-        override fun flush() = repository.flush()
-
-        override fun <S : OrderProjection?> saveAndFlush(entity: S): S = repository.saveAndFlush(entity)
-
-        override fun <S : OrderProjection?> saveAllAndFlush(entities: MutableIterable<S>): MutableList<S> =
-            repository.saveAllAndFlush(entities)
-
-        override fun deleteAllInBatch(entities: MutableIterable<OrderProjection>) =
-            repository.deleteAllInBatch(entities)
-
-        override fun deleteAllInBatch() = repository.deleteAllInBatch()
-
-        override fun deleteAllByIdInBatch(ids: MutableIterable<UUID>) = repository.deleteAllByIdInBatch(ids)
-
-        override fun getOne(id: UUID): OrderProjection = repository.getOne(id)
-
-        override fun getById(id: UUID): OrderProjection = repository.getById(id)
-
-        override fun getReferenceById(id: UUID): OrderProjection = repository.getReferenceById(id)
-
-    }
+    val orderProjectionRepository =
+        SimpleJpaRepository<OrderProjection, UUID>(OrderProjection::class.java, entityManager)
 
     val commandProcessor = CommandProcessor(
         aggregateStore,

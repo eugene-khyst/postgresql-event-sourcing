@@ -7,18 +7,19 @@ import com.example.eventsourcing.domain.event.Event;
 import com.example.eventsourcing.domain.event.EventWithId;
 import com.example.eventsourcing.mapper.OrderMapper;
 import com.example.eventsourcing.projection.OrderProjection;
-import com.example.eventsourcing.repository.OrderProjectionRepository;
 import org.slf4j.Logger;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.UUID;
 
 public class OrderProjectionUpdater implements SyncEventHandler {
 
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(OrderProjectionUpdater.class);
-    private final OrderProjectionRepository repository;
+    private final JpaRepository<OrderProjection, UUID> repository;
     private final OrderMapper mapper = new OrderMapper();
 
-    public OrderProjectionUpdater(OrderProjectionRepository repository) {
+    public OrderProjectionUpdater(JpaRepository<OrderProjection, UUID> repository) {
         this.repository = repository;
     }
 
