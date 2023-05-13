@@ -1,6 +1,5 @@
 package com.example.eventsourcing.service.event;
 
-import com.example.eventsourcing.config.KafkaTopicsConfig;
 import com.example.eventsourcing.domain.Aggregate;
 import com.example.eventsourcing.domain.AggregateType;
 import com.example.eventsourcing.domain.OrderAggregate;
@@ -13,6 +12,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.springframework.kafka.core.KafkaTemplate;
+
+import static com.example.eventsourcing.MainKt.TOPIC_ORDER_EVENTS;
 
 public class OrderIntegrationEventSender implements AsyncEventHandler {
 
@@ -41,7 +42,7 @@ public class OrderIntegrationEventSender implements AsyncEventHandler {
         try {
             log.info("Publishing integration event {}", orderDto);
             kafkaTemplate.send(
-                    KafkaTopicsConfig.TOPIC_ORDER_EVENTS,
+                    TOPIC_ORDER_EVENTS,
                     orderDto.orderId().toString(),
                     objectMapper.writeValueAsString(orderDto)
             );

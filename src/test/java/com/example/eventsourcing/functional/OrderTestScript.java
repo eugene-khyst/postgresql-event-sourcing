@@ -1,6 +1,5 @@
 package com.example.eventsourcing.functional;
 
-import com.example.eventsourcing.config.KafkaTopicsConfig;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +17,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.stream.StreamSupport;
 
+import static com.example.eventsourcing.MainKt.TOPIC_ORDER_EVENTS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class OrderTestScript {
@@ -41,7 +41,7 @@ public class OrderTestScript {
     }
 
     public void execute() {
-        try (var kafkaConsumer = createKafkaConsumer(KafkaTopicsConfig.TOPIC_ORDER_EVENTS)) {
+        try (var kafkaConsumer = createKafkaConsumer(TOPIC_ORDER_EVENTS)) {
             log.info("Place a new order");
             UUID orderId = placeOrder("""
                     {

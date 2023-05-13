@@ -1,6 +1,6 @@
 package com.example.kotlin.functional
 
-import com.example.eventsourcing.config.KafkaTopicsConfig
+import com.example.eventsourcing.TOPIC_ORDER_EVENTS
 import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.kafka.clients.consumer.Consumer
@@ -192,7 +192,7 @@ class OrderTestScript(private val restTemplate: TestRestTemplate, private val ka
                 """.trimIndent(), "Order in status COMPLETED can't be cancelled"
         )
         log.info("Print integration events")
-        val kafkaConsumer = createKafkaConsumer(KafkaTopicsConfig.TOPIC_ORDER_EVENTS)
+        val kafkaConsumer = createKafkaConsumer(TOPIC_ORDER_EVENTS)
         val kafkaRecordValues = getKafkaRecords(kafkaConsumer, Duration.ofSeconds(10), 23)
         Assertions.assertThat(kafkaRecordValues)
             .hasSizeGreaterThanOrEqualTo(23)

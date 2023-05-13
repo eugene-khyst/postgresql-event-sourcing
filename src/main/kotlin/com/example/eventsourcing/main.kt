@@ -1,7 +1,9 @@
 package com.example.eventsourcing;
 
 import com.example.eventsourcing.config.EventSourcingProperties
+import com.example.eventsourcing.config.EventSourcingProperties.SnapshottingProperties
 import com.example.eventsourcing.controller.OrdersController
+import com.example.eventsourcing.domain.AggregateType
 import com.example.eventsourcing.projection.OrderProjection
 import com.example.eventsourcing.repository.AggregateRepository
 import com.example.eventsourcing.repository.EventRepository
@@ -26,6 +28,9 @@ import com.zaxxer.hikari.HikariDataSource
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.apache.kafka.clients.admin.AdminClient
+import org.apache.kafka.clients.admin.AdminClientConfig
+import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.StringSerializer
 import org.flywaydb.core.Flyway
@@ -48,6 +53,7 @@ import org.springframework.data.jpa.repository.support.SimpleJpaRepository
 import org.springframework.data.repository.query.FluentQuery
 import org.springframework.http.ResponseEntity
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
+import org.springframework.kafka.config.TopicBuilder
 import org.springframework.kafka.core.DefaultKafkaProducerFactory
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.core.ProducerFactory
@@ -59,12 +65,41 @@ import java.lang.reflect.InvocationTargetException
 import java.util.*
 import java.util.function.Function
 
+const val TOPIC_ORDER_EVENTS = "order-events"
+
+
 private inline fun <reified T : Any> ResponseEntity<T>.toHttp4kResponse() =
     Response(Status(this.statusCode.value(), null))
         .headers(this.headers.map { it.key to it.value.firstOrNull() }.toList()).let {
             if (this.body != null) it.with(Body.auto<T>().toLens() of body) else it
         }
 
+fun kafkaTemplate(kafkaBootstrapServers: String): KafkaTemplate<String, String> {
+    val props = Properties()
+    props[AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG] = "localhost:9092"
+
+    val adminClient = AdminClient.create(props)
+
+    val topics: MutableList<NewTopic> = ArrayList()
+    topics.add(
+        TopicBuilder
+            .name(TOPIC_ORDER_EVENTS)
+            .partitions(10)
+            .replicas(1)
+            .build()
+    );
+
+    adminClient.createTopics(topics)
+    val configs = mapOf(
+        ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to kafkaBootstrapServers,
+        ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
+        ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
+        ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION to 1
+    )
+
+    val producerFactory: ProducerFactory<String, String> = DefaultKafkaProducerFactory(configs)
+    return KafkaTemplate(producerFactory)
+}
 val objectMapper: ObjectMapper = jacksonObjectMapper().also {
     it.findAndRegisterModules()
     it.enable(SerializationFeature.WRITE_ENUMS_USING_TO_STRING)
@@ -87,7 +122,7 @@ fun app(kafkaBootstrapServers: String): RoutingHttpHandler {
     val eventRepository = EventRepository(namedParameterJdbcTemplate, objectMapper)
     val aggregateStore = AggregateStore(
         aggregateRepository, eventRepository,
-        EventSourcingProperties()
+        EventSourcingProperties(mapOf(AggregateType.ORDER to SnapshottingProperties(true, 10)))
     )
     val hibernateProperties = Properties().also {
         it.setProperty("hibernate.physical_naming_strategy", CamelCaseToUnderscoresNamingStrategy::class.java.name)
@@ -184,15 +219,7 @@ fun app(kafkaBootstrapServers: String): RoutingHttpHandler {
         listOf(OrderProjectionUpdater(orderProjectionRepository))
     )
 
-    val configs = mapOf(
-        ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to kafkaBootstrapServers,
-        ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
-        ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
-        ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION to 1
-    )
-
-    val producerFactory: ProducerFactory<String, String> = DefaultKafkaProducerFactory(configs)
-    val kafkaTemplate = KafkaTemplate(producerFactory)
+    val kafkaTemplate = kafkaTemplate(kafkaBootstrapServers)
     val orderIntegrationEventSender = OrderIntegrationEventSender(aggregateStore, kafkaTemplate, objectMapper)
     val eventSubscriptionProcessor =
         EventSubscriptionProcessor(EventSubscriptionRepository(namedParameterJdbcTemplate), eventRepository)
@@ -203,7 +230,6 @@ fun app(kafkaBootstrapServers: String): RoutingHttpHandler {
     )
 
     GlobalScope.launch {
-        // Perform your background task here
         while (true) {
             delay(1000) // Delay for 1 second
             scheduledEventSubscriptionProcessor.processNewEvents()
