@@ -21,7 +21,6 @@ configurations {
 
 ext {
     set('postgresql_version', '42.5.4')
-    set('mapstruct_version', '1.5.3.Final')
     set('testcontainers_version', '1.17.6')
     set('http4k_version', '4.43.0.0')
 }
@@ -33,7 +32,6 @@ dependencies {
     implementation 'org.springframework.kafka:spring-kafka'
 
     implementation "org.postgresql:postgresql:${postgresql_version}"
-    implementation "org.mapstruct:mapstruct:${mapstruct_version}"
 
     implementation platform("org.http4k:http4k-bom:${http4k_version}")
     implementation "org.http4k:http4k-core"
@@ -43,8 +41,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
 
     implementation 'org.flywaydb:flyway-core'
-
-    annotationProcessor "org.mapstruct:mapstruct-processor:${mapstruct_version}"
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.kafka:spring-kafka-test'

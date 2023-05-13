@@ -10,19 +10,20 @@ import java.time.Instant
 
 class OrderMapper {
     fun toProjection(order: OrderAggregate): OrderProjection {
-        val orderProjection = OrderProjection()
-        orderProjection.id = order.aggregateId
-        orderProjection.version = order.version
-        orderProjection.status = order.status
-        orderProjection.riderId = order.riderId
-        orderProjection.price = order.price
-        orderProjection.route = waypointDtoListToWaypointProjectionList(order.route)
-        orderProjection.driverId = order.driverId
-        orderProjection.placedDate = order.placedDate
-        orderProjection.acceptedDate = order.acceptedDate
-        orderProjection.completedDate = order.completedDate
-        orderProjection.cancelledDate = order.cancelledDate
-        return orderProjection
+        return OrderProjection()
+            .also {
+                it.id = order.aggregateId
+                it.version = order.version
+                it.status = order.status
+                it.riderId = order.riderId
+                it.price = order.price
+                it.route = waypointDtoListToWaypointProjectionList(order.route)
+                it.driverId = order.driverId
+                it.placedDate = order.placedDate
+                it.acceptedDate = order.acceptedDate
+                it.completedDate = order.completedDate
+                it.cancelledDate = order.cancelledDate
+            }
     }
 
     fun toDto(
@@ -42,20 +43,16 @@ class OrderMapper {
         )
     }
 
-    protected fun waypointDtoToWaypointProjection(waypointDto: WaypointDto): WaypointProjection {
-        val waypointProjection = WaypointProjection()
-        waypointProjection.address = waypointDto.address
-        waypointProjection.latitude = waypointDto.latitude
-        waypointProjection.longitude = waypointDto.longitude
-        return waypointProjection
+    private fun waypointDtoToWaypointProjection(waypointDto: WaypointDto): WaypointProjection {
+        return WaypointProjection().also {
+            it.address = waypointDto.address
+            it.latitude = waypointDto.latitude
+            it.longitude = waypointDto.longitude
+        }
     }
 
-    protected fun waypointDtoListToWaypointProjectionList(list: List<WaypointDto>): List<WaypointProjection> {
-        val list1: MutableList<WaypointProjection> = ArrayList(list.size)
-        for (waypointDto in list) {
-            list1.add(waypointDtoToWaypointProjection(waypointDto))
-        }
-        return list1
+    private fun waypointDtoListToWaypointProjectionList(list: List<WaypointDto>): List<WaypointProjection> {
+        return list.map { waypointDtoToWaypointProjection(it) }
     }
 
     fun toEpochMilli(instant: Instant): Long {

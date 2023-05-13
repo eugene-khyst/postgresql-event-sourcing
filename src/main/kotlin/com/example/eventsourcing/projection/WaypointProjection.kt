@@ -2,14 +2,17 @@ package com.example.eventsourcing.projection
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import jakarta.persistence.Embeddable
+import java.io.Serializable
 
 @Embeddable
-class WaypointProjection {
+class WaypointProjection : Serializable {
     var address: String? = null
 
+    @set:JsonProperty("lat")
     @JsonProperty("lat")
     var latitude = 0.0
 
+    @set:JsonProperty("lon")
     @JsonProperty("lon")
     var longitude = 0.0
     override fun equals(o: Any?): Boolean {
