@@ -8,7 +8,6 @@ import com.example.eventsourcing.domain.event.EventWithId
 import com.example.eventsourcing.dto.OrderDto
 import com.example.eventsourcing.mapper.OrderMapper
 import com.example.eventsourcing.service.AggregateStore
-import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.kafka.core.KafkaTemplate
@@ -29,16 +28,12 @@ class OrderIntegrationEventSender(
     }
 
     private fun sendDataToKafka(orderDto: OrderDto) {
-        try {
-            log.info("Publishing integration event {}", orderDto)
-            kafkaTemplate.send(
-                TOPIC_ORDER_EVENTS,
-                orderDto.orderId.toString(),
-                objectMapper.writeValueAsString(orderDto)
-            )
-        } catch (e: JsonProcessingException) {
-            throw RuntimeException(e)
-        }
+        log.info("Publishing integration event {}", orderDto)
+        kafkaTemplate.send(
+            TOPIC_ORDER_EVENTS,
+            orderDto.orderId.toString(),
+            objectMapper.writeValueAsString(orderDto)
+        )
     }
 
     override val aggregateType: AggregateType

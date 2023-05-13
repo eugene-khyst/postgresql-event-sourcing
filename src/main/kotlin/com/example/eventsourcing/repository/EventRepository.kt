@@ -4,7 +4,6 @@ import com.example.eventsourcing.domain.AggregateType
 import com.example.eventsourcing.domain.event.Event
 import com.example.eventsourcing.domain.event.EventType
 import com.example.eventsourcing.domain.event.EventWithId
-import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.postgresql.util.PGobject
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
@@ -16,25 +15,21 @@ import java.util.*
 
 class EventRepository(private val jdbcTemplate: NamedParameterJdbcTemplate, private val objectMapper: ObjectMapper) {
     fun <T : Event> appendEvent(event: Event): EventWithId<T> {
-        return try {
-            val result = jdbcTemplate.query<EventWithId<T>>(
-                """
+        val result = jdbcTemplate.query<EventWithId<T>>(
+            """
                             INSERT INTO ES_EVENT (TRANSACTION_ID, AGGREGATE_ID, VERSION, EVENT_TYPE, JSON_DATA)
                             VALUES(pg_current_xact_id(), :aggregateId, :version, :eventType, :jsonObj::json)
                             RETURNING ID, TRANSACTION_ID::text, EVENT_TYPE, JSON_DATA
                             
                             """.trimIndent(),
-                mapOf(
-                    "aggregateId" to event.aggregateId,
-                    "version" to event.version,
-                    "eventType" to event.eventType.toString(),
-                    "jsonObj" to objectMapper.writeValueAsString(event)
-                )
-            ) { rs: ResultSet, rowNum: Int -> toEvent(rs, rowNum) }
-            result[0]
-        } catch (e: Exception) {
-            throw RuntimeException(e)
-        }
+            mapOf(
+                "aggregateId" to event.aggregateId,
+                "version" to event.version,
+                "eventType" to event.eventType.toString(),
+                "jsonObj" to objectMapper.writeValueAsString(event)
+            )
+        ) { rs: ResultSet, rowNum: Int -> toEvent(rs, rowNum) }
+        return result[0]
     }
 
     fun readEvents(
@@ -96,11 +91,7 @@ class EventRepository(private val jdbcTemplate: NamedParameterJdbcTemplate, priv
         val eventType = EventType.valueOf(rs.getString("EVENT_TYPE"))
         val jsonObj = rs.getObject("JSON_DATA") as PGobject
         val json = jsonObj.value
-        return try {
-            val event = objectMapper.readValue(json, eventType.eventClass)
-            EventWithId(id, BigInteger(transactionId), event as T)
-        } catch (e: JsonProcessingException) {
-            throw RuntimeException(e)
-        }
+        val event = objectMapper.readValue(json, eventType.eventClass)
+        return EventWithId(id, BigInteger(transactionId), event as T)
     }
 }

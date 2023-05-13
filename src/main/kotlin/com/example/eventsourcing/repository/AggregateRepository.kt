@@ -2,7 +2,6 @@ package com.example.eventsourcing.repository
 
 import com.example.eventsourcing.domain.Aggregate
 import com.example.eventsourcing.domain.AggregateType
-import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.postgresql.util.PGobject
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
@@ -10,7 +9,6 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import java.sql.ResultSet
 import java.sql.Types
 import java.util.*
-import java.util.Map
 
 class AggregateRepository(
     private val jdbcTemplate: NamedParameterJdbcTemplate,
@@ -27,9 +25,9 @@ class AggregateRepository(
                         ON CONFLICT DO NOTHING
                         
                         """.trimIndent(),
-            Map.of(
-                "aggregateId", aggregateId,
-                "aggregateType", aggregateType.toString()
+            mapOf(
+                "aggregateId" to aggregateId,
+                "aggregateType" to aggregateType.toString()
             )
         )
     }
@@ -47,32 +45,28 @@ class AggregateRepository(
                            AND VERSION = :expectedVersion
                         
                         """.trimIndent(),
-            Map.of(
-                "newVersion", newVersion,
-                "aggregateId", aggregateId,
-                "expectedVersion", expectedVersion
+            mapOf(
+                "newVersion" to newVersion,
+                "aggregateId" to aggregateId,
+                "expectedVersion" to expectedVersion
             )
         )
         return updatedRows > 0
     }
 
     fun createAggregateSnapshot(aggregate: Aggregate) {
-        try {
-            jdbcTemplate.update(
-                """
+        jdbcTemplate.update(
+            """
                             INSERT INTO ES_AGGREGATE_SNAPSHOT (AGGREGATE_ID, VERSION, JSON_DATA)
                             VALUES (:aggregateId, :version, :jsonObj::json)
                             
                             """.trimIndent(),
-                Map.of(
-                    "aggregateId", aggregate.aggregateId,
-                    "version", aggregate.version,
-                    "jsonObj", objectMapper.writeValueAsString(aggregate)
-                )
+            mapOf(
+                "aggregateId" to aggregate.aggregateId,
+                "version" to aggregate.version,
+                "jsonObj" to objectMapper.writeValueAsString(aggregate)
             )
-        } catch (e: JsonProcessingException) {
-            throw RuntimeException(e)
-        }
+        )
     }
 
     fun readAggregateSnapshot(
@@ -99,13 +93,9 @@ class AggregateRepository(
     }
 
     private fun toAggregate(rs: ResultSet, rowNum: Int): Aggregate {
-        return try {
-            val aggregateType = AggregateType.valueOf(rs.getString("AGGREGATE_TYPE"))
-            val jsonObj = rs.getObject("JSON_DATA") as PGobject
-            val json = jsonObj.value
-            objectMapper.readValue(json, aggregateType.aggregateClass)
-        } catch (e: JsonProcessingException) {
-            throw RuntimeException(e)
-        }
+        val aggregateType = AggregateType.valueOf(rs.getString("AGGREGATE_TYPE"))
+        val jsonObj = rs.getObject("JSON_DATA") as PGobject
+        val json = jsonObj.value
+        return objectMapper.readValue(json, aggregateType.aggregateClass)
     }
 }
