@@ -9,15 +9,12 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-@RestController
-@RequestMapping("/orders")
 public class OrdersController {
 
     private final ObjectMapper objectMapper;
@@ -30,8 +27,7 @@ public class OrdersController {
         this.orderProjectionRepository = orderProjectionRepository;
     }
 
-    @PostMapping
-    public ResponseEntity<JsonNode> placeOrder(@RequestBody JsonNode request) throws IOException {
+    public ResponseEntity<JsonNode> placeOrder(JsonNode request) throws IOException {
         var order = commandProcessor.process(new PlaceOrderCommand(
                 UUID.fromString(request.get("riderId").asText()),
                 new BigDecimal(request.get("price").asText()),
@@ -44,8 +40,7 @@ public class OrdersController {
                         .put("orderId", order.getAggregateId().toString()));
     }
 
-    @PutMapping("/{orderId}")
-    public ResponseEntity<Object> modifyOrder(@PathVariable UUID orderId, @RequestBody JsonNode request) {
+    public ResponseEntity<Object> modifyOrder(UUID orderId, JsonNode request) {
         OrderStatus newStatus = OrderStatus.valueOf(request.get("status").asText());
         switch (newStatus) {
             case ADJUSTED -> {
@@ -76,13 +71,11 @@ public class OrdersController {
         }
     }
 
-    @GetMapping("/")
     public ResponseEntity<List<OrderProjection>> getOrders() {
         return ResponseEntity.ok(orderProjectionRepository.findAll());
     }
 
-    @GetMapping("/{orderId}")
-    public ResponseEntity<OrderProjection> getOrder(@PathVariable UUID orderId) {
+    public ResponseEntity<OrderProjection> getOrder(UUID orderId) {
         return orderProjectionRepository
                 .findById(orderId)
                 .map(ResponseEntity::ok)

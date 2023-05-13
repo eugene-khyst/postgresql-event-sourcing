@@ -11,16 +11,12 @@ import com.example.eventsourcing.repository.AggregateRepository;
 import com.example.eventsourcing.repository.EventRepository;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-@Transactional
-@Component
 public class AggregateStore {
 
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(AggregateStore.class);

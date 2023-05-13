@@ -9,14 +9,10 @@ import com.example.eventsourcing.service.command.CommandHandler;
 import com.example.eventsourcing.service.command.DefaultCommandHandler;
 import com.example.eventsourcing.service.event.SyncEventHandler;
 import org.slf4j.Logger;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
 
-@Transactional
-@Component
 public class CommandProcessor {
 
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(CommandProcessor.class);

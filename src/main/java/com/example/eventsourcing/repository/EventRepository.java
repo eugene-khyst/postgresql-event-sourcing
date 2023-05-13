@@ -10,9 +10,6 @@ import jakarta.annotation.Nullable;
 import org.postgresql.util.PGobject;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigInteger;
 import java.sql.ResultSet;
@@ -22,8 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-@Transactional(propagation = Propagation.MANDATORY)
-@Repository
 public class EventRepository {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;

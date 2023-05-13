@@ -13,9 +13,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.stereotype.Component;
 
-@Component
 public class OrderIntegrationEventSender implements AsyncEventHandler {
 
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(OrderIntegrationEventSender.class);

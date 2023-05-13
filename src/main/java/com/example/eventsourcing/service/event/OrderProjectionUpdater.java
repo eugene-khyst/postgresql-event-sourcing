@@ -9,13 +9,9 @@ import com.example.eventsourcing.mapper.OrderMapper;
 import com.example.eventsourcing.projection.OrderProjection;
 import com.example.eventsourcing.repository.OrderProjectionRepository;
 import org.slf4j.Logger;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-@Transactional
-@Component
 public class OrderProjectionUpdater implements SyncEventHandler {
 
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(OrderProjectionUpdater.class);

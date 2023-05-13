@@ -10,6 +10,7 @@ import com.example.eventsourcing.repository.OrderProjectionRepository
 import com.example.eventsourcing.service.AggregateStore
 import com.example.eventsourcing.service.CommandProcessor
 import com.example.eventsourcing.service.EventSubscriptionProcessor
+import com.example.eventsourcing.service.ScheduledEventSubscriptionProcessor
 import com.example.eventsourcing.service.command.DefaultCommandHandler
 import com.example.eventsourcing.service.command.PlaceOrderCommandHandler
 import com.example.eventsourcing.service.event.OrderIntegrationEventSender
@@ -183,9 +184,6 @@ fun app(kafkaBootstrapServers: String): RoutingHttpHandler {
         listOf(OrderProjectionUpdater(orderProjectionRepository))
     )
 
-    val eventSubscriptionProcessor =
-        EventSubscriptionProcessor(EventSubscriptionRepository(namedParameterJdbcTemplate), eventRepository)
-
     val configs = mapOf(
         ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to kafkaBootstrapServers,
         ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
@@ -196,12 +194,19 @@ fun app(kafkaBootstrapServers: String): RoutingHttpHandler {
     val producerFactory: ProducerFactory<String, String> = DefaultKafkaProducerFactory(configs)
     val kafkaTemplate = KafkaTemplate(producerFactory)
     val orderIntegrationEventSender = OrderIntegrationEventSender(aggregateStore, kafkaTemplate, objectMapper)
+    val eventSubscriptionProcessor =
+        EventSubscriptionProcessor(EventSubscriptionRepository(namedParameterJdbcTemplate), eventRepository)
+
+    val scheduledEventSubscriptionProcessor = ScheduledEventSubscriptionProcessor(
+        listOf(orderIntegrationEventSender),
+        eventSubscriptionProcessor
+    )
 
     GlobalScope.launch {
         // Perform your background task here
         while (true) {
             delay(1000) // Delay for 1 second
-            eventSubscriptionProcessor.processNewEvents(orderIntegrationEventSender)
+            scheduledEventSubscriptionProcessor.processNewEvents()
         }
     }
 
