@@ -30,7 +30,6 @@ import org.apache.kafka.common.serialization.StringSerializer
 import org.flywaydb.core.Flyway
 import org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
 import org.hibernate.jpa.HibernatePersistenceProvider
-import org.http4k.client.ApacheClient
 import org.http4k.core.*
 import org.http4k.filter.ServerFilters
 import org.http4k.format.Jackson.auto
@@ -190,7 +189,8 @@ fun app(kafkaBootstrapServers: String): RoutingHttpHandler {
     val configs = mapOf(
         ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to kafkaBootstrapServers,
         ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
-        ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java
+        ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
+        ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION to 1
     )
 
     val producerFactory: ProducerFactory<String, String> = DefaultKafkaProducerFactory(configs)
@@ -270,13 +270,7 @@ fun app(kafkaBootstrapServers: String): RoutingHttpHandler {
 }
 
 fun main() {
-    val server = app((System.getenv("KAFKA_BOOTSTRAP_SERVERS") ?: "localhost:9092")).asServer(Undertow(9000)).start()
-
-    val client = ApacheClient()
-
-    val request = Request(Method.GET, "http://localhost:9000/orders")
-
-    println(client(request))
-
-    server.stop()
+    val server = app((System.getenv("KAFKA_BOOTSTRAP_SERVERS") ?: "localhost:9092"))
+        .asServer(Undertow(8080))
+        .start()
 }

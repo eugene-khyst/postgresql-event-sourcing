@@ -4,9 +4,7 @@ import com.example.eventsourcing.config.KafkaTopicsConfig;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.springframework.boot.test.json.BasicJsonTester;
@@ -43,184 +41,185 @@ public class OrderTestScript {
     }
 
     public void execute() {
-        log.info("Place a new order");
-        UUID orderId = placeOrder("""
-                {
-                  "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
-                  "price":"123.45",
-                  "route":[
+        try (var kafkaConsumer = createKafkaConsumer(KafkaTopicsConfig.TOPIC_ORDER_EVENTS)) {
+            log.info("Place a new order");
+            UUID orderId = placeOrder("""
                     {
-                      "address":"Kyiv, 17A Polyarna Street",
-                      "lat":50.51980052414157,
-                      "lon":30.467197278948536
-                    },
-                    {
-                      "address":"Kyiv, 18V Novokostyantynivska Street",
-                      "lat":50.48509161169076,
-                      "lon":30.485170724431292
+                      "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
+                      "price":"123.45",
+                      "route":[
+                        {
+                          "address":"Kyiv, 17A Polyarna Street",
+                          "lat":50.51980052414157,
+                          "lon":30.467197278948536
+                        },
+                        {
+                          "address":"Kyiv, 18V Novokostyantynivska Street",
+                          "lat":50.48509161169076,
+                          "lon":30.485170724431292
+                        }
+                      ]
                     }
-                  ]
-                }
-                """);
+                    """);
 
-        log.info("Get the placed order");
-        getOrder(orderId, """
-                {
-                  "id":"%s",
-                  "version":1,
-                  "status":"PLACED",
-                  "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
-                  "price":123.45,
-                  "route":[
+            log.info("Get the placed order");
+            getOrder(orderId, """
                     {
-                      "address":"Kyiv, 17A Polyarna Street",
-                      "lat":50.51980052414157,
-                      "lon":30.467197278948536
-                    },
-                    {
-                      "address":"Kyiv, 18V Novokostyantynivska Street",
-                      "lat":50.48509161169076,
-                      "lon":30.485170724431292
+                      "id":"%s",
+                      "version":1,
+                      "status":"PLACED",
+                      "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
+                      "price":123.45,
+                      "route":[
+                        {
+                          "address":"Kyiv, 17A Polyarna Street",
+                          "lat":50.51980052414157,
+                          "lon":30.467197278948536
+                        },
+                        {
+                          "address":"Kyiv, 18V Novokostyantynivska Street",
+                          "lat":50.48509161169076,
+                          "lon":30.485170724431292
+                        }
+                      ]
                     }
-                  ]
-                }
-                """.formatted(orderId));
+                    """.formatted(orderId));
 
-        var price = new BigDecimal("100.00");
-        for (int i = 0; i < 20; i++) {
-            price = price.add(new BigDecimal("10"));
-            log.info("Adjust the order");
+            var price = new BigDecimal("100.00");
+            for (int i = 0; i < 20; i++) {
+                price = price.add(new BigDecimal("10"));
+                log.info("Adjust the order");
+                modifyOrder(orderId, """
+                        {
+                          "status":"ADJUSTED",
+                          "price":"%s"
+                        }
+                        """.formatted(price));
+            }
+
+            log.info("Get the adjusted order");
+            getOrder(orderId, """
+                    {
+                      "id":"%s",
+                      "version":21,
+                      "status":"ADJUSTED",
+                      "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
+                      "price":300.00,
+                      "route":[
+                        {
+                          "address":"Kyiv, 17A Polyarna Street",
+                          "lat":50.51980052414157,
+                          "lon":30.467197278948536
+                        },
+                        {
+                          "address":"Kyiv, 18V Novokostyantynivska Street",
+                          "lat":50.48509161169076,
+                          "lon":30.485170724431292
+                        }
+                      ]
+                    }
+                    """.formatted(orderId));
+
+            log.info("Accepted the order");
             modifyOrder(orderId, """
                     {
-                      "status":"ADJUSTED",
-                      "price":"%s"
+                      "status":"ACCEPTED",
+                      "driverId":"2c068a1a-9263-433f-a70b-067d51b98378"
                     }
-                    """.formatted(price));
+                    """);
+
+            log.info("Get the accepted order");
+            getOrder(orderId, """
+                    {
+                      "id":"%s",
+                      "version":22,
+                      "status":"ACCEPTED",
+                      "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
+                      "price":300.00,
+                      "route":[
+                        {
+                          "address":"Kyiv, 17A Polyarna Street",
+                          "lat":50.51980052414157,
+                          "lon":30.467197278948536
+                        },
+                        {
+                          "address":"Kyiv, 18V Novokostyantynivska Street",
+                          "lat":50.48509161169076,
+                          "lon":30.485170724431292
+                        }
+                      ],
+                      "driverId":"2c068a1a-9263-433f-a70b-067d51b98378"
+                    }
+                    """.formatted(orderId));
+
+            log.info("Complete the order");
+            modifyOrder(orderId, """
+                    {
+                      "status":"COMPLETED"
+                    }
+                    """);
+
+            log.info("Get the completed order");
+            getOrder(orderId, """
+                    {
+                      "id":"%s",
+                      "version":23,
+                      "status":"COMPLETED",
+                      "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
+                      "price":300.00,
+                      "route":[
+                        {
+                          "address":"Kyiv, 17A Polyarna Street",
+                          "lat":50.51980052414157,
+                          "lon":30.467197278948536
+                        },
+                        {
+                          "address":"Kyiv, 18V Novokostyantynivska Street",
+                          "lat":50.48509161169076,
+                          "lon":30.485170724431292
+                        }
+                      ],
+                      "driverId":"2c068a1a-9263-433f-a70b-067d51b98378"
+                    }
+                    """.formatted(orderId));
+
+            log.info("Try to cancel the completed order");
+            modifyOrderError(orderId, """
+                    {
+                      "status":"CANCELLED"
+                    }
+                    """, "Order in status COMPLETED can't be cancelled");
+
+            log.info("Print integration events");
+            List<String> kafkaRecordValues = getKafkaRecords(kafkaConsumer, Duration.ofSeconds(10), 23);
+            assertThat(kafkaRecordValues)
+                    .hasSizeGreaterThanOrEqualTo(23);
+
+            String lastKafkaRecordValue = kafkaRecordValues.get(kafkaRecordValues.size() - 1);
+            assertThat(jsonTester.from(lastKafkaRecordValue)).isEqualToJson("""
+                    {
+                      "order_id":"%s",
+                      "event_type":"ORDER_COMPLETED",
+                      "version":23,
+                      "status":"COMPLETED",
+                      "rider_id":"63770803-38f4-4594-aec2-4c74918f7165",
+                      "price":300.00,
+                      "route":[
+                        {
+                          "lat":50.51980052414157,
+                          "lon":30.467197278948536,
+                          "address":"Kyiv, 17A Polyarna Street"
+                        },
+                        {
+                          "lat":50.48509161169076,
+                          "lon":30.485170724431292,
+                          "address":"Kyiv, 18V Novokostyantynivska Street"
+                        }
+                      ],
+                      "driver_id":"2c068a1a-9263-433f-a70b-067d51b98378"
+                    }
+                    """.formatted(orderId));
         }
-
-        log.info("Get the adjusted order");
-        getOrder(orderId, """
-                {
-                  "id":"%s",
-                  "version":21,
-                  "status":"ADJUSTED",
-                  "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
-                  "price":300.00,
-                  "route":[
-                    {
-                      "address":"Kyiv, 17A Polyarna Street",
-                      "lat":50.51980052414157,
-                      "lon":30.467197278948536
-                    },
-                    {
-                      "address":"Kyiv, 18V Novokostyantynivska Street",
-                      "lat":50.48509161169076,
-                      "lon":30.485170724431292
-                    }
-                  ]
-                }
-                """.formatted(orderId));
-
-        log.info("Accepted the order");
-        modifyOrder(orderId, """
-                {
-                  "status":"ACCEPTED",
-                  "driverId":"2c068a1a-9263-433f-a70b-067d51b98378"
-                }
-                """);
-
-        log.info("Get the accepted order");
-        getOrder(orderId, """
-                {
-                  "id":"%s",
-                  "version":22,
-                  "status":"ACCEPTED",
-                  "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
-                  "price":300.00,
-                  "route":[
-                    {
-                      "address":"Kyiv, 17A Polyarna Street",
-                      "lat":50.51980052414157,
-                      "lon":30.467197278948536
-                    },
-                    {
-                      "address":"Kyiv, 18V Novokostyantynivska Street",
-                      "lat":50.48509161169076,
-                      "lon":30.485170724431292
-                    }
-                  ],
-                  "driverId":"2c068a1a-9263-433f-a70b-067d51b98378"
-                }
-                """.formatted(orderId));
-
-        log.info("Complete the order");
-        modifyOrder(orderId, """
-                {
-                  "status":"COMPLETED"
-                }
-                """);
-
-        log.info("Get the completed order");
-        getOrder(orderId, """
-                {
-                  "id":"%s",
-                  "version":23,
-                  "status":"COMPLETED",
-                  "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
-                  "price":300.00,
-                  "route":[
-                    {
-                      "address":"Kyiv, 17A Polyarna Street",
-                      "lat":50.51980052414157,
-                      "lon":30.467197278948536
-                    },
-                    {
-                      "address":"Kyiv, 18V Novokostyantynivska Street",
-                      "lat":50.48509161169076,
-                      "lon":30.485170724431292
-                    }
-                  ],
-                  "driverId":"2c068a1a-9263-433f-a70b-067d51b98378"
-                }
-                """.formatted(orderId));
-
-        log.info("Try to cancel the completed order");
-        modifyOrderError(orderId, """
-                {
-                  "status":"CANCELLED"
-                }
-                """, "Order in status COMPLETED can't be cancelled");
-
-        log.info("Print integration events");
-        var kafkaConsumer = createKafkaConsumer(KafkaTopicsConfig.TOPIC_ORDER_EVENTS);
-        List<String> kafkaRecordValues = getKafkaRecords(kafkaConsumer, Duration.ofSeconds(10), 23);
-        assertThat(kafkaRecordValues)
-                .hasSizeGreaterThanOrEqualTo(23);
-
-        String lastKafkaRecordValue = kafkaRecordValues.get(kafkaRecordValues.size() - 1);
-        assertThat(jsonTester.from(lastKafkaRecordValue)).isEqualToJson("""
-                {
-                  "order_id":"%s",
-                  "event_type":"ORDER_COMPLETED",
-                  "version":23,
-                  "status":"COMPLETED",
-                  "rider_id":"63770803-38f4-4594-aec2-4c74918f7165",
-                  "price":300.00,
-                  "route":[
-                    {
-                      "lat":50.51980052414157,
-                      "lon":30.467197278948536,
-                      "address":"Kyiv, 17A Polyarna Street"
-                    },
-                    {
-                      "lat":50.48509161169076,
-                      "lon":30.485170724431292,
-                      "address":"Kyiv, 18V Novokostyantynivska Street"
-                    }
-                  ],
-                  "driver_id":"2c068a1a-9263-433f-a70b-067d51b98378"
-                }
-                """.formatted(orderId));
     }
 
     private UUID placeOrder(String body) {
@@ -296,6 +295,8 @@ public class OrderTestScript {
                 this.getClass().getSimpleName() + "-consumer",
                 "true"
         );
+        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.LATEST.toString().toLowerCase());
+
         var cf = new DefaultKafkaConsumerFactory<>(
                 consumerProps,
                 new StringDeserializer(),
