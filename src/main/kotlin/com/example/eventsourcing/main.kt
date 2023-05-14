@@ -1,9 +1,10 @@
 package com.example.eventsourcing
 
 import com.example.eventsourcing.config.EventSourcingProperties
-import com.example.eventsourcing.config.EventSourcingProperties.SnapshottingProperties
+import com.example.eventsourcing.config.SnapshottingProperties
 import com.example.eventsourcing.controller.OrdersController
 import com.example.eventsourcing.domain.AggregateType
+import com.example.eventsourcing.error.ErrorMessage
 import com.example.eventsourcing.projection.OrderProjection
 import com.example.eventsourcing.repository.AggregateRepository
 import com.example.eventsourcing.repository.EventRepository
@@ -35,7 +36,13 @@ import org.apache.kafka.common.serialization.StringSerializer
 import org.flywaydb.core.Flyway
 import org.hibernate.boot.model.naming.CamelCaseToUnderscoresNamingStrategy
 import org.hibernate.jpa.HibernatePersistenceProvider
-import org.http4k.core.*
+import org.http4k.core.Body
+import org.http4k.core.Method
+import org.http4k.core.Request
+import org.http4k.core.Response
+import org.http4k.core.Status
+import org.http4k.core.then
+import org.http4k.core.with
 import org.http4k.filter.ServerFilters
 import org.http4k.format.Jackson.auto
 import org.http4k.routing.RoutingHttpHandler
@@ -125,6 +132,7 @@ fun app(kafkaBootstrapServers: String): RoutingHttpHandler {
     }.`object`
 
     val entityManager = entityManagerFactory.createEntityManager()
+
     val orderProjectionRepository =
         SimpleJpaRepository<OrderProjection, UUID>(OrderProjection::class.java, entityManager)
 

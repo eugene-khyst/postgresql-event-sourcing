@@ -62,7 +62,7 @@ abstract class Aggregate protected constructor(val aggregateId: UUID, var versio
             method.invoke(this, o)
         } catch (e: NoSuchMethodException) {
             throw UnsupportedOperationException(
-                "Aggregate %s doesn't support %s(%s)".formatted(
+                "Aggregate %s doesn't support %s(%s)".format(
                     this.javaClass, methodName, o.javaClass.simpleName
                 ),
                 e

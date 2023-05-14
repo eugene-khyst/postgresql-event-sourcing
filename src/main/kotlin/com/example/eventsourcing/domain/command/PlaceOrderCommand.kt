@@ -9,11 +9,8 @@ class PlaceOrderCommand(
     val riderId: UUID,
     val price: BigDecimal,
     val route: List<WaypointDto>
-) : Command(AggregateType.ORDER, generateAggregateId()) {
+) : Command {
+    override val aggregateType: AggregateType = AggregateType.ORDER
 
-    companion object {
-        private fun generateAggregateId(): UUID {
-            return UUID.randomUUID()
-        }
-    }
+    override val aggregateId: UUID = UUID.randomUUID()
 }

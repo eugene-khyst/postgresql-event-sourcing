@@ -90,8 +90,7 @@ class EventRepository(private val jdbcTemplate: NamedParameterJdbcTemplate, priv
         val transactionId = rs.getString("TRANSACTION_ID")
         val eventType = EventType.valueOf(rs.getString("EVENT_TYPE"))
         val jsonObj = rs.getObject("JSON_DATA") as PGobject
-        val json = jsonObj.value
-        val event = objectMapper.readValue(json, eventType.eventClass)
+        val event = objectMapper.readValue(jsonObj.value, eventType.eventClass)
         return EventWithId(id, BigInteger(transactionId), event as T)
     }
 }

@@ -4,6 +4,8 @@ import com.example.eventsourcing.domain.AggregateType
 import java.util.*
 
 class AcceptOrderCommand(
-    aggregateId: UUID,
+    override val aggregateId: UUID,
     val driverId: UUID
-) : Command(AggregateType.ORDER, aggregateId)
+) : Command {
+    override val aggregateType: AggregateType = AggregateType.ORDER
+}

@@ -1,7 +1,15 @@
 package com.example.eventsourcing.domain
 
-import com.example.eventsourcing.domain.command.*
-import com.example.eventsourcing.domain.event.*
+import com.example.eventsourcing.domain.command.AcceptOrderCommand
+import com.example.eventsourcing.domain.command.AdjustOrderPriceCommand
+import com.example.eventsourcing.domain.command.CancelOrderCommand
+import com.example.eventsourcing.domain.command.CompleteOrderCommand
+import com.example.eventsourcing.domain.command.PlaceOrderCommand
+import com.example.eventsourcing.domain.event.OrderAcceptedEvent
+import com.example.eventsourcing.domain.event.OrderCancelledEvent
+import com.example.eventsourcing.domain.event.OrderCompletedEvent
+import com.example.eventsourcing.domain.event.OrderPlacedEvent
+import com.example.eventsourcing.domain.event.OrderPriceAdjustedEvent
 import com.example.eventsourcing.dto.OrderStatus
 import com.example.eventsourcing.dto.WaypointDto
 import com.example.eventsourcing.error.Error

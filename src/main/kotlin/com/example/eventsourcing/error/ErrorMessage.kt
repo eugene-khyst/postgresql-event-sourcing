@@ -1,3 +1,3 @@
-package com.example.eventsourcing
+package com.example.eventsourcing.error
 
 data class ErrorMessage(val error: String)

@@ -6,7 +6,7 @@ import com.example.eventsourcing.domain.event.EventWithId
 
 interface AsyncEventHandler {
     fun handleEvent(event: EventWithId<Event>)
+    fun subscriptionName(): String = javaClass.name
+
     val aggregateType: AggregateType
-    val subscriptionName: String
-        get() = javaClass.name
 }

@@ -95,7 +95,7 @@ class AggregateRepository(
     private fun toAggregate(rs: ResultSet, rowNum: Int): Aggregate {
         val aggregateType = AggregateType.valueOf(rs.getString("AGGREGATE_TYPE"))
         val jsonObj = rs.getObject("JSON_DATA") as PGobject
-        val json = jsonObj.value
-        return objectMapper.readValue(json, aggregateType.aggregateClass)
+
+        return objectMapper.readValue(jsonObj.value, aggregateType.aggregateClass)
     }
 }

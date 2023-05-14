@@ -5,6 +5,8 @@ import java.math.BigDecimal
 import java.util.*
 
 class AdjustOrderPriceCommand(
-    aggregateId: UUID,
+    override val aggregateId: UUID,
     val newPrice: BigDecimal
-) : Command(AggregateType.ORDER, aggregateId)
+) : Command {
+    override val aggregateType: AggregateType = AggregateType.ORDER
+}

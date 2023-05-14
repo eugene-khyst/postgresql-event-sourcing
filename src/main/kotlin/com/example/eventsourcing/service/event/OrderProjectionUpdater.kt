@@ -25,8 +25,7 @@ class OrderProjectionUpdater(private val repository: JpaRepository<OrderProjecti
         repository.save(orderProjection)
     }
 
-    override val aggregateType: AggregateType
-        get() = AggregateType.ORDER
+    override val aggregateType: AggregateType = AggregateType.ORDER
 
     companion object {
         private val log = LoggerFactory.getLogger(OrderProjectionUpdater::class.java)

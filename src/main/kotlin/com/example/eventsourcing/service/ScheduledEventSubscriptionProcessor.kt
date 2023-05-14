@@ -18,7 +18,7 @@ class ScheduledEventSubscriptionProcessor(
         } catch (e: Exception) {
             log.warn(
                 "Failed to handle new events for subscription %s"
-                    .formatted(eventHandler.subscriptionName), e
+                    .format(eventHandler.subscriptionName()), e
             )
         }
     }

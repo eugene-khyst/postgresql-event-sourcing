@@ -18,6 +18,7 @@ class OrderIntegrationEventSender(
     private val objectMapper: ObjectMapper
 ) : AsyncEventHandler {
     private val orderMapper = OrderMapper()
+
     override fun handleEvent(eventWithId: EventWithId<Event>) {
         val event = eventWithId.event
         val aggregate = aggregateStore.readAggregate(
@@ -36,8 +37,7 @@ class OrderIntegrationEventSender(
         )
     }
 
-    override val aggregateType: AggregateType
-        get() = AggregateType.ORDER
+    override val aggregateType: AggregateType = AggregateType.ORDER
 
     companion object {
         private val log = LoggerFactory.getLogger(OrderIntegrationEventSender::class.java)

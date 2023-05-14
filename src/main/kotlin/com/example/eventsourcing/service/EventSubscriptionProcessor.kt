@@ -11,7 +11,7 @@ class EventSubscriptionProcessor(
     private val eventRepository: EventRepository
 ) {
     fun processNewEvents(eventHandler: AsyncEventHandler) {
-        val subscriptionName = eventHandler.subscriptionName
+        val subscriptionName = eventHandler.subscriptionName()
         log.debug("Handling new events for subscription {}", subscriptionName)
         subscriptionRepository.createSubscriptionIfAbsent(subscriptionName)
         subscriptionRepository.readCheckpointAndLockSubscription(subscriptionName)
@@ -23,7 +23,7 @@ class EventSubscriptionProcessor(
                     checkpoint.lastProcessedEventId
                 )
                 log.debug("Fetched {} new event(s) for subscription {}", events.size, subscriptionName)
-                if (!events.isEmpty()) {
+                if (events.isNotEmpty()) {
                     events.forEach { eventHandler.handleEvent(it) }
                     val lastEvent = events[events.size - 1]
                     subscriptionRepository.updateEventSubscription(

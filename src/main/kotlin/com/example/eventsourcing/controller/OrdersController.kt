@@ -1,6 +1,10 @@
 package com.example.eventsourcing.controller
 
-import com.example.eventsourcing.domain.command.*
+import com.example.eventsourcing.domain.command.AcceptOrderCommand
+import com.example.eventsourcing.domain.command.AdjustOrderPriceCommand
+import com.example.eventsourcing.domain.command.CancelOrderCommand
+import com.example.eventsourcing.domain.command.CompleteOrderCommand
+import com.example.eventsourcing.domain.command.PlaceOrderCommand
 import com.example.eventsourcing.dto.OrderStatus
 import com.example.eventsourcing.dto.WaypointDto
 import com.example.eventsourcing.projection.OrderProjection
@@ -10,7 +14,6 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.http4k.core.Body
 import org.http4k.core.Response
-import org.http4k.core.Status
 import org.http4k.core.Status.Companion.BAD_REQUEST
 import org.http4k.core.Status.Companion.NOT_FOUND
 import org.http4k.core.Status.Companion.OK
@@ -32,19 +35,17 @@ class OrdersController(
             objectMapper.readValue(
                 objectMapper.treeAsTokens(request["route"]), object : TypeReference<List<WaypointDto>>() {}
             )))
-        return Response(Status.OK)
+        return Response(OK)
             .with(
                 bodyOf(
                     objectMapper.createObjectNode()
                         .put("orderId", order.aggregateId.toString())
                 )
-
             )
     }
 
     fun modifyOrder(orderId: UUID, request: JsonNode): Response {
-        val newStatus = OrderStatus.valueOf(request["status"].asText())
-        return when (newStatus) {
+        return when (OrderStatus.valueOf(request["status"].asText())) {
             OrderStatus.ADJUSTED -> {
                 commandProcessor.process(
                     AdjustOrderPriceCommand(

@@ -1,7 +1,7 @@
 package com.example.eventsourcing.service
 
 import com.example.eventsourcing.config.EventSourcingProperties
-import com.example.eventsourcing.config.EventSourcingProperties.SnapshottingProperties
+import com.example.eventsourcing.config.SnapshottingProperties
 import com.example.eventsourcing.domain.Aggregate
 import com.example.eventsourcing.domain.AggregateType
 import com.example.eventsourcing.domain.event.Event
@@ -33,15 +33,13 @@ class AggregateStore(
             throw OptimisticConcurrencyControlError(expectedVersion.toLong())
         }
         val snapshotting = properties.getSnapshotting(aggregateType)
-        val changes = aggregate.changes
-        val newEvents: MutableList<EventWithId<Event>> = ArrayList()
-        for (event in changes) {
-            log.info("Appending {} event: {}", aggregateType, event)
-            val newEvent: EventWithId<Event> = eventRepository.appendEvent(event)
-            newEvents.add(newEvent)
+
+        return aggregate.changes.map {
+            log.info("Appending {} event: {}", aggregateType, it)
+            val eventWithId: EventWithId<Event> = eventRepository.appendEvent(it)
             createAggregateSnapshot(snapshotting, aggregate)
+            eventWithId
         }
-        return newEvents
     }
 
     private fun createAggregateSnapshot(
@@ -64,8 +62,7 @@ class AggregateStore(
     ): Aggregate {
         log.debug("Reading {} aggregate {}", aggregateType, aggregateId)
         val (enabled) = properties.getSnapshotting(aggregateType)
-        val aggregate: Aggregate
-        aggregate = if (enabled) {
+        val aggregate: Aggregate = if (enabled) {
             readAggregateFromSnapshot(aggregateId, version)
                 ?: readAggregateFromEvents(aggregateType, aggregateId, version).also {
                     log.debug("Aggregate {} snapshot not found", aggregateId)
@@ -106,11 +103,11 @@ class AggregateStore(
     ): Aggregate {
         val events = eventRepository.readEvents(aggregateId, null, aggregateVersion)
             .map { it.event }
-            .toList()
+
         log.debug("Read {} events for aggregate {}", events.size, aggregateId)
-        val aggregate = aggregateType.newInstance<Aggregate>(aggregateId)
-        aggregate.loadFromHistory(events)
-        return aggregate
+        return aggregateType.newInstance<Aggregate>(aggregateId).also {
+            it.loadFromHistory(events)
+        }
     }
 
     companion object {

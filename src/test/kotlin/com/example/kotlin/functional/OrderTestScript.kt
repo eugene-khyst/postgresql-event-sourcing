@@ -1,8 +1,8 @@
 package com.example.kotlin.functional
 
 import com.example.eventsourcing.TOPIC_ORDER_EVENTS
+import com.example.eventsourcing.objectMapper
 import com.fasterxml.jackson.core.JsonProcessingException
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.serialization.StringDeserializer
@@ -22,8 +22,8 @@ import java.util.*
 import java.util.stream.StreamSupport
 
 class OrderTestScript(private val restTemplate: TestRestTemplate, private val kafkaBrokers: String) {
-    private val objectMapper = ObjectMapper()
     private val jsonTester = BasicJsonTester(javaClass)
+
     fun execute() {
         log.info("Place a new order")
         val orderId = placeOrder(
@@ -298,9 +298,9 @@ class OrderTestScript(private val restTemplate: TestRestTemplate, private val ka
             StringDeserializer(),
             StringDeserializer()
         )
-        val consumer = cf.createConsumer()
-        consumer.subscribe(Arrays.asList(*topicsToConsume))
-        return consumer
+        return cf.createConsumer().also {
+            it.subscribe(listOf(*topicsToConsume))
+        }
     }
 
     private fun getKafkaRecords(
@@ -316,14 +316,10 @@ class OrderTestScript(private val restTemplate: TestRestTemplate, private val ka
     }
 
     companion object {
-        private val HEADERS = HttpHeaders()
-        private val log = LoggerFactory.getLogger(OrderTestScript::class.java)
-
-        init {
-            HEADERS.contentType =
-                MediaType.APPLICATION_JSON
-            HEADERS.accept =
-                java.util.List.of(MediaType.APPLICATION_JSON)
+        private val HEADERS = HttpHeaders().also {
+            it.contentType = MediaType.APPLICATION_JSON
+            it.accept = listOf(MediaType.APPLICATION_JSON)
         }
+        private val log = LoggerFactory.getLogger(OrderTestScript::class.java)
     }
 }
