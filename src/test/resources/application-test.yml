@@ -1,3 +1,0 @@
-logging.level:
-  root: INFO
-  com.example.eventsourcing: DEBUG
