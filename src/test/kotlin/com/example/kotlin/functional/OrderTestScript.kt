@@ -7,13 +7,11 @@ import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.assertj.core.api.Assertions
+import org.http4k.core.HttpHandler
+import org.http4k.core.Method
+import org.http4k.core.Request
 import org.slf4j.LoggerFactory
 import org.springframework.boot.test.json.BasicJsonTester
-import org.springframework.boot.test.web.client.TestRestTemplate
-import org.springframework.http.HttpEntity
-import org.springframework.http.HttpHeaders
-import org.springframework.http.HttpMethod
-import org.springframework.http.MediaType
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory
 import org.springframework.kafka.test.utils.KafkaTestUtils
 import java.math.BigDecimal
@@ -21,7 +19,10 @@ import java.time.Duration
 import java.util.*
 import java.util.stream.StreamSupport
 
-class OrderTestScript(private val restTemplate: TestRestTemplate, private val kafkaBrokers: String) {
+class OrderTestScript(
+    private val httpHandler: HttpHandler,
+    private val kafkaBrokers: String
+) {
     private val jsonTester = BasicJsonTester(javaClass)
 
     fun execute() {
@@ -70,7 +71,7 @@ class OrderTestScript(private val restTemplate: TestRestTemplate, private val ka
                   ]
                 }
                 
-                """.trimIndent().formatted(orderId)
+                """.trimIndent().format(orderId)
         )
         var price = BigDecimal("100.00")
         for (i in 0..19) {
@@ -83,7 +84,7 @@ class OrderTestScript(private val restTemplate: TestRestTemplate, private val ka
                       "price":"%s"
                     }
                     
-                    """.trimIndent().formatted(price)
+                    """.trimIndent().format(price)
             )
         }
         log.info("Get the adjusted order")
@@ -109,7 +110,7 @@ class OrderTestScript(private val restTemplate: TestRestTemplate, private val ka
                   ]
                 }
                 
-                """.trimIndent().formatted(orderId)
+                """.trimIndent().format(orderId)
         )
         log.info("Accepted the order")
         modifyOrder(
@@ -145,7 +146,7 @@ class OrderTestScript(private val restTemplate: TestRestTemplate, private val ka
                   "driverId":"2c068a1a-9263-433f-a70b-067d51b98378"
                 }
                 
-                """.trimIndent().formatted(orderId)
+                """.trimIndent().format(orderId)
         )
         log.info("Complete the order")
         modifyOrder(
@@ -180,7 +181,7 @@ class OrderTestScript(private val restTemplate: TestRestTemplate, private val ka
                   "driverId":"2c068a1a-9263-433f-a70b-067d51b98378"
                 }
                 
-                """.trimIndent().formatted(orderId)
+                """.trimIndent().format(orderId)
         )
         log.info("Try to cancel the completed order")
         modifyOrderError(
@@ -221,20 +222,19 @@ class OrderTestScript(private val restTemplate: TestRestTemplate, private val ka
                   "driver_id":"2c068a1a-9263-433f-a70b-067d51b98378"
                 }
                 
-                """.trimIndent().formatted(orderId)
+                """.trimIndent().format(orderId)
         )
     }
 
     private fun placeOrder(body: String): UUID {
-        val response = restTemplate.exchange(
-            "/orders",
-            HttpMethod.POST,
-            HttpEntity(body, HEADERS),
-            String::class.java
+        val response = httpHandler(
+            Request(Method.POST, "/orders")
+                .json()
+                .body(body)
         )
-        Assertions.assertThat(response.statusCode.is2xxSuccessful)
+        Assertions.assertThat(response.status.successful)
             .isTrue()
-        val jsonString = response.body
+        val jsonString = response.bodyString()
         Assertions.assertThat(jsonTester.from(jsonString))
             .extractingJsonPathStringValue("@.orderId")
             .isNotEmpty()
@@ -248,41 +248,37 @@ class OrderTestScript(private val restTemplate: TestRestTemplate, private val ka
     }
 
     private fun modifyOrder(orderId: UUID, body: String) {
-        val response = restTemplate.exchange(
-            "/orders/$orderId",
-            HttpMethod.PUT,
-            HttpEntity(body, HEADERS),
-            String::class.java
+        val response = httpHandler(
+            Request(Method.PUT, "/orders/$orderId")
+                .json()
+                .body(body)
         )
-        Assertions.assertThat(response.statusCode.is2xxSuccessful)
+        Assertions.assertThat(response.status.successful)
             .isTrue()
     }
 
     private fun modifyOrderError(orderId: UUID, body: String, error: String) {
-        val response = restTemplate.exchange(
-            "/orders/$orderId",
-            HttpMethod.PUT,
-            HttpEntity(body, HEADERS),
-            String::class.java
+        val response = httpHandler(
+            Request(Method.PUT, "/orders/$orderId")
+                .json()
+                .body(body)
         )
-        Assertions.assertThat(response.statusCode.is4xxClientError)
+        Assertions.assertThat(response.status.clientError)
             .isTrue()
-        val jsonString = response.body
+        val jsonString = response.bodyString()
         Assertions.assertThat(jsonTester.from(jsonString))
             .extractingJsonPathStringValue("@.error")
             .isEqualTo(error)
     }
 
     private fun getOrder(orderId: UUID, expectedJson: String) {
-        val response = restTemplate.exchange(
-            "/orders/$orderId",
-            HttpMethod.GET,
-            HttpEntity<Any>(HEADERS),
-            String::class.java
+        val response = httpHandler(
+            Request(Method.GET, "/orders/$orderId")
+                .json()
         )
-        Assertions.assertThat(response.statusCode.is2xxSuccessful)
+        Assertions.assertThat(response.status.successful)
             .isTrue()
-        val jsonString = response.body
+        val jsonString = response.bodyString()
         Assertions.assertThat(jsonTester.from(jsonString))
             .isEqualToJson(expectedJson)
     }
@@ -316,10 +312,10 @@ class OrderTestScript(private val restTemplate: TestRestTemplate, private val ka
     }
 
     companion object {
-        private val HEADERS = HttpHeaders().also {
-            it.contentType = MediaType.APPLICATION_JSON
-            it.accept = listOf(MediaType.APPLICATION_JSON)
-        }
+        fun Request.json() =
+            header("content-type", "application/json")
+                .header("accept", "application/json")
+
         private val log = LoggerFactory.getLogger(OrderTestScript::class.java)
     }
 }

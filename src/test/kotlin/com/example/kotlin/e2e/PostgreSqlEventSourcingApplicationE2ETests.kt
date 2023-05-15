@@ -1,15 +1,18 @@
 package com.example.kotlin.e2e
 
 import com.example.kotlin.functional.OrderTestScript
+import org.http4k.client.ApacheClient
+import org.http4k.core.Uri
+import org.http4k.core.then
+import org.http4k.filter.ClientFilters
 import org.junit.jupiter.api.Test
-import org.springframework.boot.test.web.client.TestRestTemplate
-import org.springframework.boot.web.client.RestTemplateBuilder
 
 class PostgreSqlEventSourcingApplicationE2ETests {
     @Test
     fun orderTestScript() {
-        val restTemplate = RestTemplateBuilder().rootUri(ROOT_URI)
-        OrderTestScript(TestRestTemplate(restTemplate), KAFKA_BROKERS).execute()
+        val httpHandler = ClientFilters.SetBaseUriFrom(Uri.of("http://localhost:8080"))
+            .then(ApacheClient())
+        OrderTestScript(httpHandler, KAFKA_BROKERS).execute()
     }
 
     companion object {
