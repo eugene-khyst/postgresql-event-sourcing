@@ -10,6 +10,8 @@ import org.http4k.server.asServer
 import org.testcontainers.containers.KafkaContainer
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
+import java.time.Clock
+import java.time.ZoneId
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
@@ -22,7 +24,9 @@ object TestEnvironment {
         .also {
             it.start()
         }
+    val clock = Clock.fixed(Clock.systemDefaultZone().instant(), ZoneId.systemDefault())
     val appHandler = app(
+        clock,
         kafka.bootstrapServers,
         SnapshottingProperties(true, 10),
         HikariConfig("/hikari.properties"),

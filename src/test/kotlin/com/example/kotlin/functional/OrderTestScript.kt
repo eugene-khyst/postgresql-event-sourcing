@@ -1,19 +1,26 @@
 package com.example.kotlin.functional
 
+import com.example.eventsourcing.config.Json
+import com.example.eventsourcing.config.Json.jsonify
 import com.example.eventsourcing.config.Json.objectMapper
 import com.example.eventsourcing.config.Kafka.TOPIC_ORDER_EVENTS
 import com.fasterxml.jackson.core.JsonProcessingException
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.serialization.StringDeserializer
-import org.assertj.core.api.Assertions
 import org.http4k.core.HttpHandler
 import org.http4k.core.Method
 import org.http4k.core.Request
 import org.slf4j.LoggerFactory
-import org.springframework.boot.test.json.BasicJsonTester
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory
 import org.springframework.kafka.test.utils.KafkaTestUtils
+import strikt.api.expectThat
+import strikt.assertions.isEqualTo
+import strikt.assertions.isGreaterThanOrEqualTo
+import strikt.assertions.isTrue
+import strikt.jackson.isTextual
+import strikt.jackson.path
+import strikt.jackson.textValue
 import java.math.BigDecimal
 import java.time.Duration
 import java.util.*
@@ -23,8 +30,6 @@ class OrderTestScript(
     private val httpHandler: HttpHandler,
     private val kafkaBrokers: String
 ) {
-    private val jsonTester = BasicJsonTester(javaClass)
-
     fun execute() {
         log.info("Place a new order")
         val orderId = placeOrder(
@@ -45,8 +50,7 @@ class OrderTestScript(
                     }
                   ]
                 }
-                
-                """.trimIndent()
+                """
         )
         log.info("Get the placed order")
         getOrder(
@@ -68,10 +72,10 @@ class OrderTestScript(
                       "lat":50.48509161169076,
                       "lon":30.485170724431292
                     }
-                  ]
+                  ],
+                  "placedDate" : ${TestEnvironment.clock.instant().toEpochMilli()}
                 }
-                
-                """.trimIndent().format(orderId)
+                """.format(orderId)
         )
         var price = BigDecimal("100.00")
         for (i in 0..19) {
@@ -84,7 +88,7 @@ class OrderTestScript(
                       "price":"%s"
                     }
                     
-                    """.trimIndent().format(price)
+                    """.format(price)
             )
         }
         log.info("Get the adjusted order")
@@ -107,10 +111,10 @@ class OrderTestScript(
                       "lat":50.48509161169076,
                       "lon":30.485170724431292
                     }
-                  ]
+                  ],
+                  "placedDate" : ${TestEnvironment.clock.instant().toEpochMilli()}
                 }
-                
-                """.trimIndent().format(orderId)
+                """.format(orderId)
         )
         log.info("Accepted the order")
         modifyOrder(
@@ -119,8 +123,7 @@ class OrderTestScript(
                   "status":"ACCEPTED",
                   "driverId":"2c068a1a-9263-433f-a70b-067d51b98378"
                 }
-                
-                """.trimIndent()
+                """
         )
         log.info("Get the accepted order")
         getOrder(
@@ -143,10 +146,11 @@ class OrderTestScript(
                       "lon":30.485170724431292
                     }
                   ],
-                  "driverId":"2c068a1a-9263-433f-a70b-067d51b98378"
+                  "driverId":"2c068a1a-9263-433f-a70b-067d51b98378",
+                  "placedDate" : ${TestEnvironment.clock.instant().toEpochMilli()},
+                  "acceptedDate" : ${TestEnvironment.clock.instant().toEpochMilli()}
                 }
-                
-                """.trimIndent().format(orderId)
+                """.format(orderId)
         )
         log.info("Complete the order")
         modifyOrder(
@@ -154,8 +158,7 @@ class OrderTestScript(
                 {
                   "status":"COMPLETED"
                 }
-                
-                """.trimIndent()
+                """
         )
         log.info("Get the completed order")
         getOrder(
@@ -178,10 +181,12 @@ class OrderTestScript(
                       "lon":30.485170724431292
                     }
                   ],
-                  "driverId":"2c068a1a-9263-433f-a70b-067d51b98378"
+                  "driverId":"2c068a1a-9263-433f-a70b-067d51b98378",
+                  "placedDate": ${TestEnvironment.clock.instant().toEpochMilli()},
+                  "acceptedDate": ${TestEnvironment.clock.instant().toEpochMilli()},
+                  "completedDate": ${TestEnvironment.clock.instant().toEpochMilli()}
                 }
-                
-                """.trimIndent().format(orderId)
+                """.format(orderId)
         )
         log.info("Try to cancel the completed order")
         modifyOrderError(
@@ -189,40 +194,39 @@ class OrderTestScript(
                 {
                   "status":"CANCELLED"
                 }
-                
-                """.trimIndent(), "Order in status COMPLETED can't be cancelled"
+                """, "Order in status COMPLETED can't be cancelled"
         )
         log.info("Print integration events")
         val kafkaConsumer = createKafkaConsumer(TOPIC_ORDER_EVENTS)
         val kafkaRecordValues = getKafkaRecords(kafkaConsumer, Duration.ofSeconds(10), 23)
-        Assertions.assertThat(kafkaRecordValues)
-            .hasSizeGreaterThanOrEqualTo(23)
+        expectThat(kafkaRecordValues.size)
+            .isGreaterThanOrEqualTo(23)
         val lastKafkaRecordValue = kafkaRecordValues[kafkaRecordValues.size - 1]
-        Assertions.assertThat(jsonTester.from(lastKafkaRecordValue)).isEqualToJson(
+        expectThat(lastKafkaRecordValue.jsonify()).isEqualTo(
             """
                 {
                   "orderId":"%s",
                   "eventType":"ORDER_COMPLETED",
+                  "eventTimestamp": ${TestEnvironment.clock.instant().toEpochMilli()},
                   "version":23,
                   "status":"COMPLETED",
                   "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
                   "price":300.00,
                   "route":[
                     {
+                      "address":"Kyiv, 17A Polyarna Street",
                       "lat":50.51980052414157,
-                      "lon":30.467197278948536,
-                      "address":"Kyiv, 17A Polyarna Street"
+                      "lon":30.467197278948536
                     },
                     {
+                      "address":"Kyiv, 18V Novokostyantynivska Street",
                       "lat":50.48509161169076,
-                      "lon":30.485170724431292,
-                      "address":"Kyiv, 18V Novokostyantynivska Street"
+                      "lon":30.485170724431292
                     }
                   ],
                   "driverId":"2c068a1a-9263-433f-a70b-067d51b98378"
                 }
-                
-                """.trimIndent().format(orderId)
+                """.format(orderId).jsonify()
         )
     }
 
@@ -232,12 +236,13 @@ class OrderTestScript(
                 .json()
                 .body(body)
         )
-        Assertions.assertThat(response.status.successful)
+        expectThat(response.status.successful)
             .isTrue()
         val jsonString = response.bodyString()
-        Assertions.assertThat(jsonTester.from(jsonString))
-            .extractingJsonPathStringValue("@.orderId")
-            .isNotEmpty()
+        expectThat(Json.objectMapper.readTree(jsonString))
+            .path("orderId")
+            .isTextual()
+
         return try {
             val jsonTree = objectMapper.readTree(jsonString)
             val orderId = jsonTree["orderId"].asText()
@@ -253,7 +258,7 @@ class OrderTestScript(
                 .json()
                 .body(body)
         )
-        Assertions.assertThat(response.status.successful)
+        expectThat(response.status.successful)
             .isTrue()
     }
 
@@ -263,11 +268,12 @@ class OrderTestScript(
                 .json()
                 .body(body)
         )
-        Assertions.assertThat(response.status.clientError)
+        expectThat(response.status.clientError)
             .isTrue()
         val jsonString = response.bodyString()
-        Assertions.assertThat(jsonTester.from(jsonString))
-            .extractingJsonPathStringValue("@.error")
+        expectThat(objectMapper.readTree(jsonString))
+            .path("error")
+            .textValue()
             .isEqualTo(error)
     }
 
@@ -276,11 +282,9 @@ class OrderTestScript(
             Request(Method.GET, "/orders/$orderId")
                 .json()
         )
-        Assertions.assertThat(response.status.successful)
+        expectThat(response.status.successful)
             .isTrue()
-        val jsonString = response.bodyString()
-        Assertions.assertThat(jsonTester.from(jsonString))
-            .isEqualToJson(expectedJson)
+        expectThat(response.bodyString().jsonify()).isEqualTo(expectedJson.jsonify())
     }
 
     private fun createKafkaConsumer(vararg topicsToConsume: String): Consumer<String, String> {

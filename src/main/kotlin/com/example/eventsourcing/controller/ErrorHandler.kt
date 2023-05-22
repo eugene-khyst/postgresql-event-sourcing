@@ -14,6 +14,7 @@ object ErrorHandler : (Throwable) -> Response {
     private val errorMessageLens = Body.auto<ErrorMessage>().toLens()
 
     override fun invoke(e: Throwable): Response {
+        e.printStackTrace()
         return when (e) {
             is UnsupportedOperationException -> {
                 when (val cause = e.cause) {

@@ -42,11 +42,13 @@ import org.springframework.data.jpa.repository.support.SimpleJpaRepository
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter
+import java.time.Clock
 import java.util.*
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
 fun app(
+    clock: Clock,
     kafkaBootstrapServers: String,
     snapshottingProperties: SnapshottingProperties,
     hikariConfig: HikariConfig,
@@ -109,7 +111,7 @@ fun app(
         }
     }
 
-    val ordersController = OrdersController(objectMapper, commandProcessor, orderProjectionRepository)
+    val ordersController = OrdersController(clock, objectMapper, commandProcessor, orderProjectionRepository)
 
     return ServerFilters.CatchAll(ErrorHandler)
         .then(
@@ -149,6 +151,7 @@ fun app(
 
 fun main() {
     app(
+        Clock.systemDefaultZone(),
         (System.getenv("KAFKA_BOOTSTRAP_SERVERS") ?: "localhost:9092"),
         SnapshottingProperties(true, 10),
         HikariConfig("/hikari.properties"),

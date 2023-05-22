@@ -29,7 +29,7 @@ class OrderMapper {
     ): OrderDto = OrderDto(
         order.aggregateId,
         event.eventType.name,
-        event.createdDate.toEpochMilli(),
+        event.createdAt.toEpochMilli(),
         order.baseVersion,
         order.status,
         order.riderId,

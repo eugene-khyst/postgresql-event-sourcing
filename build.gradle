@@ -13,6 +13,12 @@ repositories {
     mavenCentral()
 }
 
+tasks.named("compileKotlin", org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask) {
+    compilerOptions {
+        freeCompilerArgs.add("-Xcontext-receivers")
+    }
+}
+
 configurations {
     compileOnly {
         extendsFrom annotationProcessor
@@ -24,6 +30,8 @@ ext {
     set('testcontainers_version', '1.17.6')
     set('http4k_version', '4.43.0.0')
     set('exposedVersion', '0.40.1')
+    set('striktVersion', '0.34.1')
+    set('junitVersion', '5.8.2')
 }
 
 dependencies {
@@ -47,7 +55,13 @@ dependencies {
     implementation 'org.flywaydb:flyway-core'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
 
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    testImplementation(platform("io.strikt:strikt-bom:$striktVersion"))
+
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
+    testImplementation("io.strikt:strikt-jackson")
+    testImplementation("io.strikt:strikt-jvm")
+    testImplementation("io.strikt:strikt-spring")
     testImplementation 'org.springframework.kafka:spring-kafka-test'
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.testcontainers:postgresql'

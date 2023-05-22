@@ -45,6 +45,7 @@ class OrderAggregate(aggregateId: UUID, version: Int) : Aggregate(aggregateId, v
             OrderPlacedEvent(
                 aggregateId,
                 nextVersion,
+                command.createdAt,
                 command.riderId,
                 command.price,
                 command.route,
@@ -60,6 +61,7 @@ class OrderAggregate(aggregateId: UUID, version: Int) : Aggregate(aggregateId, v
             OrderPriceAdjustedEvent(
                 aggregateId,
                 nextVersion,
+                command.createdAt,
                 command.newPrice,
             )
         )
@@ -73,6 +75,7 @@ class OrderAggregate(aggregateId: UUID, version: Int) : Aggregate(aggregateId, v
             OrderAcceptedEvent(
                 aggregateId,
                 nextVersion,
+                command.createdAt,
                 command.driverId
             )
         )
@@ -85,7 +88,8 @@ class OrderAggregate(aggregateId: UUID, version: Int) : Aggregate(aggregateId, v
         applyChange(
             OrderCompletedEvent(
                 aggregateId,
-                nextVersion
+                nextVersion,
+                command.createdAt
             )
         )
     }
@@ -95,7 +99,11 @@ class OrderAggregate(aggregateId: UUID, version: Int) : Aggregate(aggregateId, v
             throw Error("Order in status %s can't be cancelled", status)
         }
         applyChange(
-            OrderCancelledEvent(aggregateId, nextVersion)
+            OrderCancelledEvent(
+                aggregateId,
+                nextVersion,
+                command.createdAt
+            )
         )
     }
 
@@ -104,7 +112,7 @@ class OrderAggregate(aggregateId: UUID, version: Int) : Aggregate(aggregateId, v
         riderId = event.riderId
         price = event.price
         route = event.route
-        placedDate = event.createdDate
+        placedDate = event.createdAt
     }
 
     fun apply(event: OrderPriceAdjustedEvent) {
@@ -115,17 +123,17 @@ class OrderAggregate(aggregateId: UUID, version: Int) : Aggregate(aggregateId, v
     fun apply(event: OrderAcceptedEvent) {
         status = OrderStatus.ACCEPTED
         driverId = event.driverId
-        acceptedDate = event.createdDate
+        acceptedDate = event.createdAt
     }
 
     fun apply(event: OrderCompletedEvent) {
         status = OrderStatus.COMPLETED
-        completedDate = event.createdDate
+        completedDate = event.createdAt
     }
 
     fun apply(event: OrderCancelledEvent) {
         status = OrderStatus.CANCELLED
-        cancelledDate = event.createdDate
+        cancelledDate = event.createdAt
     }
 
     override val aggregateType = AggregateType.ORDER

@@ -21,9 +21,11 @@ import org.http4k.core.with
 import org.http4k.format.Jackson.auto
 import org.springframework.data.jpa.repository.JpaRepository
 import java.math.BigDecimal
+import java.time.Clock
 import java.util.*
 
 class OrdersController(
+    private val clock: Clock,
     private val objectMapper: ObjectMapper,
     private val commandProcessor: CommandProcessor,
     private val orderProjectionRepository: JpaRepository<OrderProjection, UUID>
@@ -34,7 +36,7 @@ class OrdersController(
             BigDecimal(request["price"].asText()),
             objectMapper.readValue(
                 objectMapper.treeAsTokens(request["route"]), object : TypeReference<List<WaypointDto>>() {}
-            )))
+            ), clock.instant()))
         return Response(OK)
             .with(
                 bodyOf(
@@ -50,6 +52,7 @@ class OrdersController(
                 commandProcessor.process(
                     AdjustOrderPriceCommand(
                         orderId,
+                        clock.instant(),
                         BigDecimal(request["price"].asText())
                     )
                 )
@@ -60,6 +63,7 @@ class OrdersController(
                 commandProcessor.process(
                     AcceptOrderCommand(
                         orderId,
+                        clock.instant(),
                         UUID.fromString(request["driverId"].asText())
                     )
                 )
@@ -67,12 +71,20 @@ class OrdersController(
             }
 
             OrderStatus.COMPLETED -> {
-                commandProcessor.process(CompleteOrderCommand(orderId))
+                commandProcessor.process(
+                    CompleteOrderCommand(
+                        orderId, clock.instant()
+                    )
+                )
                 Response(OK)
             }
 
             OrderStatus.CANCELLED -> {
-                commandProcessor.process(CancelOrderCommand(orderId))
+                commandProcessor.process(
+                    CancelOrderCommand(
+                        orderId, clock.instant(),
+                    )
+                )
                 Response(OK)
             }
 
