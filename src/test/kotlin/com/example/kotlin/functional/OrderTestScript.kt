@@ -1,7 +1,7 @@
 package com.example.kotlin.functional
 
 import com.example.eventsourcing.TOPIC_ORDER_EVENTS
-import com.example.eventsourcing.objectMapper
+import com.example.eventsourcing.config.Json.objectMapper
 import com.fasterxml.jackson.core.JsonProcessingException
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -201,11 +201,11 @@ class OrderTestScript(
         Assertions.assertThat(jsonTester.from(lastKafkaRecordValue)).isEqualToJson(
             """
                 {
-                  "order_id":"%s",
-                  "event_type":"ORDER_COMPLETED",
+                  "orderId":"%s",
+                  "eventType":"ORDER_COMPLETED",
                   "version":23,
                   "status":"COMPLETED",
-                  "rider_id":"63770803-38f4-4594-aec2-4c74918f7165",
+                  "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
                   "price":300.00,
                   "route":[
                     {
@@ -219,7 +219,7 @@ class OrderTestScript(
                       "address":"Kyiv, 18V Novokostyantynivska Street"
                     }
                   ],
-                  "driver_id":"2c068a1a-9263-433f-a70b-067d51b98378"
+                  "driverId":"2c068a1a-9263-433f-a70b-067d51b98378"
                 }
                 
                 """.trimIndent().format(orderId)
