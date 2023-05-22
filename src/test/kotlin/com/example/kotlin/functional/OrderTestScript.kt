@@ -1,7 +1,7 @@
 package com.example.kotlin.functional
 
-import com.example.eventsourcing.TOPIC_ORDER_EVENTS
 import com.example.eventsourcing.config.Json.objectMapper
+import com.example.eventsourcing.config.Kafka.TOPIC_ORDER_EVENTS
 import com.fasterxml.jackson.core.JsonProcessingException
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.ConsumerRecord

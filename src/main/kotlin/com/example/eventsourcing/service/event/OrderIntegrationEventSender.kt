@@ -1,6 +1,6 @@
 package com.example.eventsourcing.service.event
 
-import com.example.eventsourcing.TOPIC_ORDER_EVENTS
+import com.example.eventsourcing.config.Kafka.TOPIC_ORDER_EVENTS
 import com.example.eventsourcing.domain.AggregateType
 import com.example.eventsourcing.domain.OrderAggregate
 import com.example.eventsourcing.domain.event.Event

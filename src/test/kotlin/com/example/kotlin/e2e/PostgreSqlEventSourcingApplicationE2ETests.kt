@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test
 class PostgreSqlEventSourcingApplicationE2ETests {
     @Test
     fun orderTestScript() {
-        val httpHandler = ClientFilters.SetBaseUriFrom(Uri.of("http://localhost:8080"))
+        val httpHandler = ClientFilters.SetBaseUriFrom(Uri.of(ROOT_URI))
             .then(ApacheClient())
         OrderTestScript(httpHandler, KAFKA_BROKERS).execute()
     }

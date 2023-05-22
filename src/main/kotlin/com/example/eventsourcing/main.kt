@@ -1,6 +1,7 @@
 package com.example.eventsourcing
 
 import com.example.eventsourcing.config.EventSourcingProperties
+import com.example.eventsourcing.config.IntegrationEventProperties
 import com.example.eventsourcing.config.Json.objectMapper
 import com.example.eventsourcing.config.Kafka.kafkaClient
 import com.example.eventsourcing.config.SnapshottingProperties
@@ -42,29 +43,34 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter
 import java.util.*
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 
-const val TOPIC_ORDER_EVENTS = "order-events"
-
-fun app(kafkaBootstrapServers: String): RoutingHttpHandler {
-    val dataSource = HikariDataSource(HikariConfig("/hikari.properties"))
-    val flyway = Flyway.configure()
-        .dataSource(dataSource)
-        .locations("classpath:db/migration") // Specify the location of your migration files
-        .load()
-
-    flyway.migrate()
+fun app(
+    kafkaBootstrapServers: String,
+    snapshottingProperties: SnapshottingProperties,
+    hikariConfig: HikariConfig,
+    integrationEventProperties: IntegrationEventProperties
+): RoutingHttpHandler {
+    val dataSource = HikariDataSource(hikariConfig).also {
+        Flyway.configure()
+            .dataSource(it)
+            .locations("classpath:db/migration") // Specify the location of your migration files
+            .load()
+            .migrate()
+    }
     val namedParameterJdbcTemplate = NamedParameterJdbcTemplate(dataSource)
     val aggregateRepository = AggregateRepository(namedParameterJdbcTemplate, objectMapper)
     val eventRepository = EventRepository(namedParameterJdbcTemplate, objectMapper)
     val aggregateStore = AggregateStore(
         aggregateRepository, eventRepository,
-        EventSourcingProperties(mapOf(AggregateType.ORDER to SnapshottingProperties(true, 10)))
+        EventSourcingProperties(mapOf(AggregateType.ORDER to snapshottingProperties))
     )
     val hibernateProperties = Properties().also {
         it.setProperty("hibernate.physical_naming_strategy", CamelCaseToUnderscoresNamingStrategy::class.java.name)
     }
 
-    val entityManagerFactory = LocalContainerEntityManagerFactoryBean().also { em ->
+    val entityManager = LocalContainerEntityManagerFactoryBean().also { em ->
         em.dataSource = dataSource
         em.setPackagesToScan("com.example.eventsourcing")
         em.jpaVendorAdapter = HibernateJpaVendorAdapter()
@@ -72,9 +78,7 @@ fun app(kafkaBootstrapServers: String): RoutingHttpHandler {
         em.setJpaProperties(hibernateProperties)
         em.setPersistenceProviderClass(HibernatePersistenceProvider::class.java)
         em.afterPropertiesSet()
-    }.`object`
-
-    val entityManager = entityManagerFactory.createEntityManager()
+    }.`object`?.createEntityManager()
 
     val orderProjectionRepository =
         SimpleJpaRepository<OrderProjection, UUID>(OrderProjection::class.java, entityManager)
@@ -86,20 +90,22 @@ fun app(kafkaBootstrapServers: String): RoutingHttpHandler {
         listOf(OrderProjectionUpdater(orderProjectionRepository))
     )
 
-    val kafkaTemplate = kafkaClient(kafkaBootstrapServers)
-    val orderIntegrationEventSender = OrderIntegrationEventSender(aggregateStore, kafkaTemplate, objectMapper)
-    val eventSubscriptionProcessor =
-        EventSubscriptionProcessor(EventSubscriptionRepository(namedParameterJdbcTemplate), eventRepository)
+    if (integrationEventProperties.enabled) {
+        val kafkaTemplate = kafkaClient(kafkaBootstrapServers)
+        val orderIntegrationEventSender = OrderIntegrationEventSender(aggregateStore, kafkaTemplate, objectMapper)
+        val eventSubscriptionProcessor =
+            EventSubscriptionProcessor(EventSubscriptionRepository(namedParameterJdbcTemplate), eventRepository)
 
-    val scheduledEventSubscriptionProcessor = ScheduledEventSubscriptionProcessor(
-        listOf(orderIntegrationEventSender),
-        eventSubscriptionProcessor
-    )
+        val scheduledEventSubscriptionProcessor = ScheduledEventSubscriptionProcessor(
+            listOf(orderIntegrationEventSender),
+            eventSubscriptionProcessor
+        )
 
-    GlobalScope.launch {
-        while (true) {
-            delay(1000) // Delay for 1 second
-            scheduledEventSubscriptionProcessor.processNewEvents()
+        GlobalScope.launch {
+            while (true) {
+                delay(integrationEventProperties.delay) // Delay for 1 second
+                scheduledEventSubscriptionProcessor.processNewEvents()
+            }
         }
     }
 
@@ -142,7 +148,12 @@ fun app(kafkaBootstrapServers: String): RoutingHttpHandler {
 }
 
 fun main() {
-    val server = app((System.getenv("KAFKA_BOOTSTRAP_SERVERS") ?: "localhost:9092"))
+    app(
+        (System.getenv("KAFKA_BOOTSTRAP_SERVERS") ?: "localhost:9092"),
+        SnapshottingProperties(true, 10),
+        HikariConfig("/hikari.properties"),
+        IntegrationEventProperties(true, 1.toDuration(DurationUnit.SECONDS))
+    )
         .asServer(Undertow(8080))
         .start()
 }
