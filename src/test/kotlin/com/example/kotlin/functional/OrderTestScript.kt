@@ -6,6 +6,7 @@ import com.example.eventsourcing.config.Json.objectMapper
 import com.example.eventsourcing.config.Kafka.TOPIC_ORDER_EVENTS
 import com.fasterxml.jackson.core.JsonProcessingException
 import org.apache.kafka.clients.consumer.Consumer
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.http4k.core.HttpHandler
@@ -22,7 +23,9 @@ import strikt.jackson.isTextual
 import strikt.jackson.path
 import strikt.jackson.textValue
 import java.math.BigDecimal
+import java.time.Clock
 import java.time.Duration
+import java.time.Instant
 import java.util.*
 import java.util.stream.StreamSupport
 
@@ -31,17 +34,18 @@ class OrderTestScript(
     private val kafkaBrokers: String
 ) {
     fun execute() {
-        val orderId = placeNewOrder()
-        adjustOrder(orderId)
-        acceptTheOrder(orderId)
-        completeTheOrder(orderId)
-        tryToCancelTheCompletedOrder(orderId)
-        verifyIntegrationEvents(orderId)
+        createKafkaConsumer(listOf(TOPIC_ORDER_EVENTS)).use { kafkaConsumer ->
+            val orderId = placeNewOrder()
+            adjustOrder(orderId)
+            acceptTheOrder(orderId)
+            completeTheOrder(orderId)
+            tryToCancelTheCompletedOrder(orderId)
+            verifyIntegrationEvents(orderId, kafkaConsumer)
+        }
     }
 
-    private fun verifyIntegrationEvents(orderId: UUID) {
+    private fun verifyIntegrationEvents(orderId: UUID, kafkaConsumer: Consumer<String, String>) {
         log.info("Print integration events")
-        val kafkaConsumer = createKafkaConsumer(TOPIC_ORDER_EVENTS)
         val kafkaRecordValues = getKafkaRecords(kafkaConsumer, Duration.ofSeconds(10), 23)
         expectThat(kafkaRecordValues.size)
             .isGreaterThanOrEqualTo(23)
@@ -117,9 +121,9 @@ class OrderTestScript(
                         }
                       ],
                       "driverId":"2c068a1a-9263-433f-a70b-067d51b98378",
-                      "placedDate": ${TestEnvironment.clock.instant().toEpochMilli()},
-                      "acceptedDate": ${TestEnvironment.clock.instant().toEpochMilli()},
-                      "completedDate": ${TestEnvironment.clock.instant().toEpochMilli()}
+                      "placedDate": "${TestEnvironment.clock.now()}",
+                      "acceptedDate": "${TestEnvironment.clock.now()}",
+                      "completedDate": "${TestEnvironment.clock.now()}"
                     }
                     """.format(orderId)
         )
@@ -158,8 +162,8 @@ class OrderTestScript(
                         }
                       ],
                       "driverId":"2c068a1a-9263-433f-a70b-067d51b98378",
-                      "placedDate" : ${TestEnvironment.clock.instant().toEpochMilli()},
-                      "acceptedDate" : ${TestEnvironment.clock.instant().toEpochMilli()}
+                      "placedDate" : "${TestEnvironment.clock.now()}",
+                      "acceptedDate" : "${TestEnvironment.clock.now()}"
                     }
                     """.format(orderId)
         )
@@ -203,7 +207,7 @@ class OrderTestScript(
                           "lon":30.485170724431292
                         }
                       ],
-                      "placedDate" : ${TestEnvironment.clock.instant().toEpochMilli()}
+                      "placedDate" : "${TestEnvironment.clock.now()}"
                     }
                     """.format(orderId)
         )
@@ -252,7 +256,7 @@ class OrderTestScript(
                           "lon":30.485170724431292
                         }
                       ],
-                      "placedDate" : ${TestEnvironment.clock.instant().toEpochMilli()}
+                      "placedDate" : "${TestEnvironment.clock.now()}"
                     }
                     """.format(orderId)
         )
@@ -317,19 +321,21 @@ class OrderTestScript(
         expectThat(response.bodyString().jsonify()).isEqualTo(expectedJson.jsonify())
     }
 
-    private fun createKafkaConsumer(vararg topicsToConsume: String): Consumer<String, String> {
+    private fun createKafkaConsumer(topicsToConsume: List<String>): Consumer<String, String> {
         val consumerProps = KafkaTestUtils.consumerProps(
             kafkaBrokers,
             this.javaClass.simpleName + "-consumer",
             "true"
-        )
+        ).also {
+            it[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "latest"
+        }
         val cf = DefaultKafkaConsumerFactory(
             consumerProps,
             StringDeserializer(),
             StringDeserializer()
         )
         return cf.createConsumer().also {
-            it.subscribe(listOf(*topicsToConsume))
+            it.subscribe(topicsToConsume)
         }
     }
 
@@ -353,3 +359,5 @@ class OrderTestScript(
         private val log = LoggerFactory.getLogger(OrderTestScript::class.java)
     }
 }
+
+private fun Clock.now(): Instant = Instant.now(this)
