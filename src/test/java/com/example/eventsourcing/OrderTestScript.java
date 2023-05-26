@@ -39,9 +39,8 @@ public class OrderTestScript {
     private final String kafkaBrokers;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final BasicJsonTester jsonTester = new BasicJsonTester(getClass());
-
-    @SneakyThrows
-    public void execute() {
+    
+    public void execute() throws JsonProcessingException {
         log.info("Place a new order");
         UUID orderId = placeOrder("""
                 {
@@ -193,6 +192,7 @@ public class OrderTestScript {
         log.info("Print integration events");
         var kafkaConsumer = createKafkaConsumer(KafkaTopicsConfig.TOPIC_ORDER_EVENTS);
         List<String> kafkaRecordValues = getKafkaRecords(kafkaConsumer, Duration.ofSeconds(10), 23);
+        kafkaConsumer.unsubscribe();
         assertThat(kafkaRecordValues)
                 .hasSizeGreaterThanOrEqualTo(23);
 

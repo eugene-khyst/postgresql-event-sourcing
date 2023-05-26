@@ -11,13 +11,13 @@ import org.springframework.test.context.ActiveProfiles;
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @DisabledIfEnvironmentVariable(named = "E2E_TESTING", matches = "true")
-class PostgreSqlEventSourcingApplicationTests extends AbstractContainerBaseTest {
+abstract class PostgresEventSourcingApplicationTests extends AbstractContainerBaseTest {
 
     @Autowired
     private TestRestTemplate restTemplate;
 
     @Test
-    void orderTestScript() {
+    void orderTestScript() throws Exception {
         new OrderTestScript(restTemplate, KAFKA.getBootstrapServers()).execute();
     }
 }

@@ -21,7 +21,8 @@
   - [Synchronously updating projections](#4-6)
   - [Asynchronously sending integration events to a message broker](#4-7)
     - [Reliable transactional outbox with PostgreSQL](#4-7-1)
-    - [Database polling alternatives](#4-7-2)
+    - [Database polling](#4-7-2)
+    - [Database polling alternative](#4-7-3)
   - [Adding new asynchronous event handlers](#4-8)
   - [Class diagrams](#4-9)
     - [Class diagram of the domain model](#4-9-1)
@@ -272,7 +273,7 @@ INSERT INTO ES_AGGREGATE_SNAPSHOT (AGGREGATE_ID, VERSION, JSON_DATA)
 VALUES (:aggregateId, :version, :jsonObj::json)
 ```
 
-Snapshotting for an aggregate type can be disabled and configured in the `application.yml`
+Snapshotting for an aggregate type can be disabled and configured in the [`application.yml`](src/main/resources/application.yml)
 
 ```yaml
 event-sourcing:
@@ -417,33 +418,63 @@ the events it created won't be read by the event subscription processor until tr
 
 ![PostgreSQL reliable transactional outbox](img/postgresql-reliable-outbox.svg)
 
-Event subscription processing can be disabled and configured in the `application.yml`
+#### <a id="4-7-2"></a>Database polling
+
+To get new events from the `ES_EVENT` table, the application has to poll the database.
+The shorter the polling period, the shorter the delay between persisting a new event and processing it by the subscription. 
+But the lag is inevitable. If the polling period is 1 second, then the lag is at most 1 second.
+
+The polling mechanism implementation [ScheduledEventSubscriptionProcessor](src/main/java/com/example/eventsourcing/service/ScheduledEventSubscriptionProcessor.java)
+uses a Spring annotation [@Scheduled](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/scheduling/annotation/Scheduled.html) to poll database with a fixed period.
+
+The polling event subscription processing can be enabled and configured in the [`application.yml`](src/main/resources/application.yml)
 
 ```yaml
 event-sourcing:
-  subscriptions:
-    enabled: true
+  subscriptions: polling # Enable database polling subscription processing
+  polling-subscriptions:
     polling-initial-delay: PT1S
     polling-interval: PT1S
 ```
 
-#### <a id="4-7-2"></a>Database polling alternatives
+#### <a id="4-7-3"></a>Database polling alternative
 
-PostgreSQL `LISTEN`/`NOTIFY` functionality can be used instead of polling.
+To reduce the lag associated with database polling, the polling period can be set to a very low value, 
+such as 1 second.
+But this means that there will be 3600 database queries per hour and 86400 per day, even if there are no new events. 
 
-A key limitation of the PostgreSQL JDBC driver is that it cannot receive asynchronous notifications 
+PostgreSQL `LISTEN` and `NOTIFY` feature can be used instead of polling.
+This mechanism allows for sending asynchronous notifications across database connections.
+Notifications are not sent directly from the application, 
+but via the database [trigger](src/main/resources/db/migration/V2__notify_trigger.sql) on a table.
+
+To use this functionality an unshared [PgConnection](https://jdbc.postgresql.org/documentation/publicapi/org/postgresql/jdbc/PgConnection.html) 
+which remains open is required.
+The long-lived dedicated JDBC `Connection` for receiving notifications has to be created using the `DriverManager` API, 
+instead of getting from a pooled `DataSource`.
+
+PostgreSQL JDBC driver can't receive asynchronous notifications 
 and must poll the backend to check if any notifications were issued. 
-A timeout can be given to the poll function, 
+A timeout can be given to the poll function `getNotifications(int timeoutMillis)`, 
 but then the execution of statements from other threads will block.
+When `timeoutMillis` = 0, blocks forever or until at least one notification has been received. 
+It means that notification is delivered almost immediately, without a lag.
+If more than one notification is about to be received, these will be returned in one batch.
 
-Thus, the creation of a long-lived dedicated JDBC `Connection` for receiving notifications is required.
-This connection should not be obtained from a pooled DataSources. 
-Instead, a dedicated `Connection` has to be created using the `DriverManager` API.
+This solution  significantly reduces the number of issued queries 
+and also solves the lag problem that the polling solution suffers from.
 
-In practice, implementations based on PostgreSQL `LISTEN`/`NOTIFY` are quite complex. 
-For example,
-[PostgresChannelMessageTableSubscriber](https://github.com/spring-projects/spring-integration/blob/v6.0.0/spring-integration-jdbc/src/main/java/org/springframework/integration/jdbc/channel/PostgresChannelMessageTableSubscriber.java)
-from the Spring Integration.
+The Listen/Notify mechanism implementation [PostgresChannelEventSubscriptionProcessor](src/main/java/com/example/eventsourcing/service/PostgresChannelEventSubscriptionProcessor.java)
+is inspired by the Spring Integration class [PostgresChannelMessageTableSubscriber](https://github.com/spring-projects/spring-integration/blob/v6.0.0/spring-integration-jdbc/src/main/java/org/springframework/integration/jdbc/channel/PostgresChannelMessageTableSubscriber.java).
+
+The Listen/Notify event subscription processing can be enabled in the [`application.yml`](src/main/resources/application.yml)
+
+```yaml
+event-sourcing:
+  subscriptions: postgres-channel # Enable Listen/Notify event subscription processing
+```
+
+This mechanism is used by default as more efficient.
 
 ### <a id="4-8"></a>Adding new asynchronous event handlers
 
@@ -520,7 +551,7 @@ Using PostgreSQL as an event store has a lot of advantages, but there are also d
    
 7. Run E2E tests and see the output
     ```bash
-    E2E_TESTING=true; ./gradlew clean test -i
+    E2E_TESTING=true ./gradlew clean test -i
     ```
 
 8. Explore the database using the Adminer database management tool at http://localhost:8181.

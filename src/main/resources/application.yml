@@ -17,7 +17,8 @@ event-sourcing:
       enabled: true
       # Create a snapshot on every nth event
       nth-event: 10
-  subscriptions:
-    enabled: true
+  # Available subscription: polling, postgres-channel
+  subscriptions: postgres-channel
+  polling-subscriptions:
     polling-initial-delay: PT1S
     polling-interval: PT1S
