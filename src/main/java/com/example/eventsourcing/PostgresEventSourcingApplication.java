@@ -8,9 +8,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableScheduling
 @EnableAsync
-public class PostgreSqlEventSourcingApplication {
+public class PostgresEventSourcingApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(PostgreSqlEventSourcingApplication.class, args);
+        SpringApplication.run(PostgresEventSourcingApplication.class, args);
     }
 }

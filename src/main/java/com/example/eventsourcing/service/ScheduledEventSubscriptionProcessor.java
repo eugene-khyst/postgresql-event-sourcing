@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 @Component
-@ConditionalOnProperty(name = "event-sourcing.subscriptions.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "event-sourcing.subscriptions", havingValue = "polling")
 @RequiredArgsConstructor
 @Slf4j
 public class ScheduledEventSubscriptionProcessor {
@@ -19,8 +19,8 @@ public class ScheduledEventSubscriptionProcessor {
     private final EventSubscriptionProcessor eventSubscriptionProcessor;
 
     @Scheduled(
-            fixedDelayString = "${event-sourcing.subscriptions.polling-interval}",
-            initialDelayString = "${event-sourcing.subscriptions.polling-initial-delay}"
+            fixedDelayString = "${event-sourcing.polling-subscriptions.polling-interval}",
+            initialDelayString = "${event-sourcing.polling-subscriptions.polling-initial-delay}"
     )
     public void processNewEvents() {
         eventHandlers.forEach(this::processNewEvents);
