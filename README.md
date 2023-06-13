@@ -62,7 +62,7 @@ But PostgreSQL, the world's most advanced open-source database, is also suitable
 You can use PostgreSQL as an event store without additional frameworks or extensions
 instead of setting up and maintaining a separate specialized database for event sourcing.
 
-This repository provides a reference implementation of event sourced system that uses PostgreSQL as an event store.
+This repository provides a reference implementation of an event-sourced system that uses PostgreSQL as an event store.
 You can also [fork](https://github.com/evgeniy-khist/postgresql-event-sourcing/fork) the repo
 and use it as a template for your projects.
 
