@@ -48,7 +48,7 @@ Thus, event streams will contain an entire history of changes.
 But how can we be sure that this history is authentic and error-free?
 We can use event streams as a primary source of truth in a system.
 To get the current state of an object, we have to replay all events in the order of occurrence.
-This pattern is called event sourcing. The database for storing the event streams is called even store.
+This pattern is called event sourcing. The database for storing event streams is called an event store.
 Event sourcing provides a complete and accurate record of all changes made to a system.
 Event sourcing is an industry standard for implementing audit trail.
 
