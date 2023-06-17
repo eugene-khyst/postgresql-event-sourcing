@@ -24,11 +24,11 @@
     - [Database polling](#4-7-2)
     - [Database polling alternative](#4-7-3)
   - [Adding new asynchronous event handlers](#4-8)
-  - [Class diagrams](#4-9)
-    - [Class diagram of the domain model](#4-9-1)
-    - [Class diagram of the projections](#4-9-2)
-    - [Class diagram of the service layer](#4-9-3)
-  - [Drawbacks](#4-10)
+  - [Drawbacks](#4-9)
+  - [Class diagrams](#4-10)
+    - [Class diagram of the domain model](#4-10-1)
+    - [Class diagram of the projections](#4-10-2)
+    - [Class diagram of the service layer](#4-10-3)
 - [How to run the sample?](#5)
 
 <!-- Table of contents is made with https://github.com/evgeniy-khist/markdown-toc -->
@@ -484,23 +484,7 @@ and not everything from the first one.
 New subscriptions (event handlers) in the first poll will read and process all events.
 Be careful, if there are too many events, they may take a long time to process.
 
-### <a id="4-9"></a>Class diagrams
-
-This reference implementation can be easily extended to comply with your domain model.
-
-#### <a id="4-9-1"></a>Class diagram of the domain model
-
-![Class diagram of the domain model](img/class-domain.svg)
-
-#### <a id="4-9-2"></a>Class diagram of the projections
-
-![Class diagram of the projections](img/class-projection.svg)
-
-#### <a id="4-9-3"></a>Class diagram of the service layer
-
-![Class diagram of the service layer](img/class-service.svg)
-
-### <a id="4-10"></a>Drawbacks
+### <a id="4-9"></a>Drawbacks
 
 Using PostgreSQL as an event store has a lot of advantages, but there are also drawbacks.
 
@@ -519,6 +503,22 @@ Using PostgreSQL as an event store has a lot of advantages, but there are also d
    `pg_snapshot_xmin(pg_snapshot)` will return the ID of this long-running transaction
    and events created by all later transactions will be read by the event subscription processor 
    only after this long-running transaction is committed.
+
+### <a id="4-10"></a>Class diagrams
+
+This reference implementation can be easily extended to comply with your domain model.
+
+#### <a id="4-10-1"></a>Class diagram of the domain model
+
+![Class diagram of the domain model](img/class-domain.svg)
+
+#### <a id="4-10-2"></a>Class diagram of the projections
+
+![Class diagram of the projections](img/class-projection.svg)
+
+#### <a id="4-10-3"></a>Class diagram of the service layer
+
+![Class diagram of the service layer](img/class-service.svg)
 
 ## <a id="5"></a>How to run the sample?
 
