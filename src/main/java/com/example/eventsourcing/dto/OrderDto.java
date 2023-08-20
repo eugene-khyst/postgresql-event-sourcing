@@ -3,6 +3,7 @@ package com.example.eventsourcing.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,7 +13,7 @@ public record OrderDto(
         @JsonProperty("event_type")
         String eventType,
         @JsonProperty("event_timestamp")
-        long eventTimestamp,
+        OffsetDateTime eventTimestamp,
         @JsonProperty("version")
         int version,
         @JsonProperty("status")

@@ -11,7 +11,7 @@ import lombok.NonNull;
 import lombok.ToString;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
@@ -25,10 +25,10 @@ public class OrderAggregate extends Aggregate {
     private BigDecimal price;
     private List<WaypointDto> route;
     private UUID driverId;
-    private Instant placedDate;
-    private Instant acceptedDate;
-    private Instant completedDate;
-    private Instant cancelledDate;
+    private OffsetDateTime placedDate;
+    private OffsetDateTime acceptedDate;
+    private OffsetDateTime completedDate;
+    private OffsetDateTime cancelledDate;
 
     @JsonCreator
     public OrderAggregate(@NonNull UUID aggregateId, int version) {

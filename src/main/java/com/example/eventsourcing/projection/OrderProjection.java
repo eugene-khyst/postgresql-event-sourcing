@@ -11,7 +11,7 @@ import org.springframework.data.domain.Persistable;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -37,10 +37,10 @@ public class OrderProjection implements Persistable<UUID>, Serializable {
     @ToString.Exclude
     private List<WaypointProjection> route = new ArrayList<>();
     private UUID driverId;
-    private Instant placedDate;
-    private Instant acceptedDate;
-    private Instant completedDate;
-    private Instant cancelledDate;
+    private OffsetDateTime placedDate;
+    private OffsetDateTime acceptedDate;
+    private OffsetDateTime completedDate;
+    private OffsetDateTime cancelledDate;
 
     @JsonIgnore
     @Override
