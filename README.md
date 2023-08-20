@@ -183,11 +183,11 @@ Event store is used as a write database, and SQL or NoSQL database as a read dat
 ### <a id="3-6"></a>Event handlers
 
 Commands generate events.
-Event processing is done by **event handles**.
+Event processing is done by **event handlers**.
 As a part of event processing, we may need to update projections,
 send a message to a message broker, or make an API call.
 
-There are two types of event handles: **synchronous** and **asynchronous**.
+There are two types of event handlers: **synchronous** and **asynchronous**.
 
 Storing the write model and read model in the same database allows for transactional updates of the read model.
 Each time we append a new event, the projection is updated **synchronously** in the same transaction.
@@ -264,6 +264,8 @@ Appending an event operation consists of 2 SQL statements in a single transactio
     ```
    `pg_current_xact_id()` returns the current transaction's ID. The need for this will be explained later.
 
+![Optimistic Concurrency Control](img/event-sourcing-concurrency.svg)
+
 ### <a id="4-4"></a>Snapshotting
 
 On every *nth* event insert an aggregate state (snapshot) to the `ES_AGGREGATE_SNAPSHOT` table specifying the version
@@ -338,7 +340,7 @@ New events are processed by polling the `ES_EVENT` table.
 
 ![Transactional outbox pattern with subscriptions](img/transactional-outbox-2.svg)
 
-Since multiple backend instances can run in parallel,
+Since multiple instances of this application can run in parallel,
 we need to ensure that any processing only affects the event once.
 We don't want more than one event handler instance to handle the same event.
 
@@ -481,6 +483,8 @@ This mechanism is used by default as more efficient.
 After restarting the backend, existing subscriptions will only process new events after the last processed event 
 and not everything from the first one.
 
+> [!WARNING]  
+> Critical content demanding immediate user attention due to potential risks.
 New subscriptions (event handlers) in the first poll will read and process all events.
 Be careful, if there are too many events, they may take a long time to process.
 
