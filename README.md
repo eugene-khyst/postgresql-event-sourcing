@@ -25,13 +25,17 @@
     - [Database polling alternative](#4-7-3)
   - [Adding new asynchronous event handlers](#4-8)
   - [Drawbacks](#4-9)
-  - [Class diagrams](#4-10)
-    - [Class diagram of the domain model](#4-10-1)
-    - [Class diagram of the projections](#4-10-2)
-    - [Class diagram of the service layer](#4-10-3)
-- [How to run the sample?](#5)
+- [Project structure](#5)
+  - [Gradle subprojects](#5-1)
+  - [Database schema migrations](#5-2)
+  - [Class diagrams](#5-3)
+    - [Class diagram of the domain model](#5-3-1)
+    - [Class diagram of the projections](#5-3-2)
+    - [Class diagram of the service layer](#5-3-3)
+- [How to adapt it to your domain?](#6)
+- [How to run the sample?](#7)
 
-<!-- Table of contents is made with https://github.com/evgeniy-khist/markdown-toc -->
+<!-- Table of contents is made with https://github.com/eugene-khyst/md-toc-cli -->
 
 ## <a id="1"></a>Introduction
 
@@ -62,16 +66,17 @@ But PostgreSQL, the world's most advanced open-source database, is also suitable
 You can use PostgreSQL as an event store without additional frameworks or extensions
 instead of setting up and maintaining a separate specialized database for event sourcing.
 
-This repository provides a reference implementation of an event-sourced system that uses PostgreSQL as an event store.
-You can also [fork](https://github.com/evgeniy-khist/postgresql-event-sourcing/fork) the repo
-and use it as a template for your projects.
+This repository provides a reference implementation of an event-sourced system 
+that uses PostgreSQL as an event store built with Spring Boot.
+[Fork](https://github.com/eugene-khyst/postgresql-event-sourcing/fork) the repository and use it as a template for your projects.
+Or clone the repository and run end-to-end tests to see how everything works together.
 
 ![PostgreSQL Logo](img/potgresql-logo.png)
 
 See also
 
-* [Event Sourcing with EventStoreDB](https://github.com/evgeniy-khist/eventstoredb-event-sourcing)
-* [Event Sourcing with Kafka and ksqlDB](https://github.com/evgeniy-khist/ksqldb-event-souring)
+* [Event Sourcing with EventStoreDB](https://github.com/eugene-khyst/eventstoredb-event-sourcing)
+* [Event Sourcing with Kafka and ksqlDB](https://github.com/eugene-khyst/ksqldb-event-souring)
 
 ## <a id="2"></a>Example domain
 
@@ -483,7 +488,7 @@ This mechanism is used by default as more efficient.
 After restarting the backend, existing subscriptions will only process new events after the last processed event 
 and not everything from the first one.
 
-> [!WARNING]  
+> **WARNING**  
 > Critical content demanding immediate user attention due to potential risks.
 New subscriptions (event handlers) in the first poll will read and process all events.
 Be careful, if there are too many events, they may take a long time to process.
@@ -508,30 +513,59 @@ Using PostgreSQL as an event store has a lot of advantages, but there are also d
    and events created by all later transactions will be read by the event subscription processor 
    only after this long-running transaction is committed.
 
-### <a id="4-10"></a>Class diagrams
+## <a id="5"></a>Project structure
+
+### <a id="5-1"></a>Gradle subprojects
 
 This reference implementation can be easily extended to comply with your domain model.
 
-#### <a id="4-10-1"></a>Class diagram of the domain model
+Event sourcing related code and application specific code are located in separate Gradle subprojects:
+* [`postgresql-event-sourcing-core`](postgresql-event-sourcing-core): event sourcing and PostgreSQL related code, a shared library, `eventsourcing.postgresql` package,
+* [`event-sourcing-app`](event-sourcing-app): application specific code, a simplified ride-hailing sample, `com.example.eventsourcing` package.
+
+`event-sourcing-app` depends on `postgresql-event-sourcing-core`:
+```groovy
+dependencies {
+    implementation project(':postgresql-event-sourcing-core')
+}
+```
+
+### <a id="5-2"></a>Database schema migrations
+
+Event sourcing related database schema migrations:
+* [V1__eventsourcing_tables.sql](event-sourcing-app/src/main/resources/db/migration/V1__eventsourcing_tables.sql)
+* [V2__notify_trigger.sql](event-sourcing-app/src/main/resources/db/migration/V2__notify_trigger.sql)
+
+Application specific projections database schema migration:
+* [V3__projection_tables.sql](event-sourcing-app/src/main/resources/db/migration/V3__projection_tables.sql)
+
+### <a id="5-3"></a>Class diagrams
+
+#### <a id="5-3-1"></a>Class diagram of the domain model
 
 ![Class diagram of the domain model](img/class-domain.svg)
 
-#### <a id="4-10-2"></a>Class diagram of the projections
+#### <a id="5-3-2"></a>Class diagram of the projections
 
 ![Class diagram of the projections](img/class-projection.svg)
 
-#### <a id="4-10-3"></a>Class diagram of the service layer
+#### <a id="5-3-3"></a>Class diagram of the service layer
 
 ![Class diagram of the service layer](img/class-service.svg)
 
-## <a id="5"></a>How to run the sample?
+## <a id="6"></a>How to adapt it to your domain?
+
+To adapt this sample to your domain model, make changes to `event-sourcing-app` subproject.
+No changes to `postgresql-event-sourcing-core` subproject are required.
+
+## <a id="7"></a>How to run the sample?
 
 1. Download & install [SDKMAN!](https://sdkman.io/install).
 
-2. Install JDK 17
+2. Install JDK 21
     ```bash
     sdk list java
-    sdk install java 17.0.x-tem
+    sdk install java 21-tem
     ```
 
 3. Install [Docker](https://docs.docker.com/engine/install/)
@@ -539,12 +573,12 @@ This reference implementation can be easily extended to comply with your domain 
 
 4. Build Java project and Docker image
     ```bash
-    ./gradlew clean build bootBuildImage -i
+    ./gradlew clean build jibDockerBuild -i
     ```
 
 5. Run PostgreSQL, Kafka and event-sourcing-app
     ```bash
-    docker compose up -d --scale event-sourcing-app=2
+    docker compose --env-file gradle.properties up -d --scale event-sourcing-app=2
     # wait a few minutes
     ```
 

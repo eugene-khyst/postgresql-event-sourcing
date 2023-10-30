@@ -5,16 +5,18 @@ scale max 1100 height
 
 set separator none
 
-package com.example.eventsourcing {
+left to right direction
 
-  package domain {
+package eventsourcing.postgresql #DDDDDD {
+
+  package eventsourcing.postgresql.domain {
 
     abstract class Aggregate {
       #aggregateId: UUID
       #changes: List<Event>
       #version: int
       #baseVersion: int
-      {abstract} +getAggregateType(): AggregateType
+      {abstract} +getAggregateType(): String
       +loadFromHistory(List<Event>): void
       +process(Command): void
       #getNextVersion(): int
@@ -23,7 +25,50 @@ package com.example.eventsourcing {
       -invoke(Object, String): void
     }
 
-    class OrderAggregate ##[dotted] {
+    interface AggregateTypeMapper {
+      getClassByAggregateType(String): Class
+    }
+
+    package eventsourcing.postgresql.domain.command {
+
+      class Command {
+        #aggregateType: String
+        #aggregateId: UUID
+      }
+    }
+
+    package eventsourcing.postgresql.domain.event {
+
+      class Event {
+        #aggregateId: UUID
+        #version: int
+        #createdDate: Instant
+        {abstract} +getEventType(): String
+      }
+
+      interface EventTypeMapper {
+        getClassByEventType(String): Class
+      }
+
+      class EventSubscriptionCheckpoint {
+        lastProcessedTransactionId: BigInteger
+        lastProcessedEventId: long
+      }
+
+      class EventWithId {
+        id: long
+        transactionId: BigInteger
+        event: Event
+      }
+    }
+  }
+}
+
+package com.example.eventsourcing {
+
+  package com.example.eventsourcing.domain {
+
+    class OrderAggregate {
       -status: OrderStatus
       -riderId: UUID
       -price: BigDecimal
@@ -38,78 +83,54 @@ package com.example.eventsourcing {
     enum AggregateType {
       ORDER
       +getAggregateClass(): Class
-      +newInstance(UUID): Aggregate
     }
 
-    package command {
+    class DefaultAggregateTypeMapper {
+    }
 
-      class Command {
-        #aggregateType: AggregateType
-        #aggregateId: UUID
-      }
+    package com.example.eventsourcing.domain.command {
 
-      class PlaceOrderCommand ##[dotted] {
+      class PlaceOrderCommand {
         -riderId: UUID
         -price: BigDecimal
         -route: List<WaypointDto>
       }
 
-      class AdjustOrderPriceCommand ##[dotted] {
+      class AdjustOrderPriceCommand {
         -newPrice: BigDecimal
       }
 
-      class AcceptOrderCommand ##[dotted] {
+      class AcceptOrderCommand {
         -driverId: UUID
       }
 
-      class CompleteOrderCommand ##[dotted] {
+      class CompleteOrderCommand {
       }
 
-      class CancelOrderCommand ##[dotted] {
+      class CancelOrderCommand {
       }
     }
 
-    package event {
+    package com.example.eventsourcing.domain.event {
 
-      class Event {
-        #aggregateId: UUID
-        #version: int
-        #createdDate: Instant
-        #eventType: EventType
-      }
-
-      class OrderPlacedEvent ##[dotted] {
+      class OrderPlacedEvent {
         -riderId: UUID
         -price: BigDecimal
         -route: List<WaypointDto>
       }
 
-      class OrderPriceAdjustedEvent ##[dotted] {
+      class OrderPriceAdjustedEvent {
         -newPrice: BigDecimal
       }
 
-      class OrderAcceptedEvent ##[dotted] {
+      class OrderAcceptedEvent {
         -driverId: UUID
       }
 
-      class OrderCompletedEvent ##[dotted] {
+      class OrderCompletedEvent {
       }
 
-      class OrderCancelledEvent ##[dotted] {
-      }
-
-      together {
-
-        class EventSubscriptionCheckpoint {
-          lastProcessedTransactionId: BigInteger
-          lastProcessedEventId: long
-        }
-
-        class EventWithId {
-          id: long
-          transactionId: BigInteger
-          event: Event
-        }
+      class OrderCancelledEvent {
       }
 
       enum EventType {
@@ -118,21 +139,23 @@ package com.example.eventsourcing {
         ORDER_ACCEPTED
         ORDER_COMPLETED
         ORDER_CANCELLED
-        {static} +fromClass(Class): EventType
         +getEventClass(): Class
+      }
+
+      class DefaultEventTypeMapper {
       }
     }
   }
 
-  package dto {
+  package com.example.eventsourcing.dto {
 
-    class WaypointDto ##[dotted] {
+    class WaypointDto {
       address: String
       latitude: double
       longitude: double
     }
 
-    enum OrderStatus ##[dotted] {
+    enum OrderStatus {
       PLACED
       ADJUSTED
       ACCEPTED
@@ -142,29 +165,31 @@ package com.example.eventsourcing {
   }
 }
 
-Aggregate o-- AggregateType
-Aggregate .left.> Command
-Aggregate .right.> Event
+Aggregate ..> Command
+Aggregate ...> Event
 Aggregate <|-- OrderAggregate
 
-OrderAggregate o--- WaypointDto
-OrderAggregate o--- OrderStatus
+AggregateTypeMapper .left.> Aggregate
+AggregateTypeMapper <|.. DefaultAggregateTypeMapper
 
-Command o--- AggregateType
+OrderAggregate o-- WaypointDto
+OrderAggregate o-- OrderStatus
 
-Command <|-up- PlaceOrderCommand
-Command <|-up- AdjustOrderPriceCommand
-Command <|-up- AcceptOrderCommand
-Command <|--right- CompleteOrderCommand
-Command <|--left- CancelOrderCommand
+Command <|-- PlaceOrderCommand
+Command <|-- AdjustOrderPriceCommand
+Command <|-- AcceptOrderCommand
+Command <|-- CompleteOrderCommand
+Command <|-- CancelOrderCommand
 
-Event <|--up- OrderPlacedEvent
-Event <|-up- OrderPriceAdjustedEvent
-Event <|-up- OrderAcceptedEvent
-Event <|-right- OrderCompletedEvent
-Event <|--left- OrderCancelledEvent
+Event <|-- OrderPlacedEvent
+Event <|-- OrderPriceAdjustedEvent
+Event <|-- OrderAcceptedEvent
+Event <|-- OrderCompletedEvent
+Event <|-- OrderCancelledEvent
 
-Event o-- EventType
-EventWithId o-up- Event
+EventWithId o-- Event
+
+EventTypeMapper ..> Event
+EventTypeMapper <|.. DefaultEventTypeMapper
 
 @enduml
