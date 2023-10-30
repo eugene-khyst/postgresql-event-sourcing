@@ -30,9 +30,9 @@ services:
         condition: service_healthy
 
   kafka:
-    image: confluentinc/cp-kafka:7.3.2
+    image: confluentinc/cp-kafka:7.5.1
     environment:
-      KAFKA_BROKER_ID: 1
+      KAFKA_NODE_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
       KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -42,19 +42,19 @@ services:
       KAFKA_JMX_PORT: 9101
       KAFKA_JMX_HOSTNAME: localhost
       KAFKA_PROCESS_ROLES: 'broker,controller'
-      KAFKA_NODE_ID: 1
       KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
       KAFKA_LISTENERS: 'PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092'
       KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+      # Replace CLUSTER_ID with a unique base64 UUID using "bin/kafka-storage.sh random-uuid"
+      # See https://docs.confluent.io/kafka/operations-tools/kafka-tools.html#kafka-storage-sh
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
     ports:
       - "9092:9092"
       - "9101:9101"
     volumes:
       - kafka-data:/var/lib/kafka/data
-      - ./kafka/update_run.sh:/tmp/update_run.sh
-    command: "bash -c 'if [ ! -f /tmp/update_run.sh ]; then echo \"ERROR: Did you forget the update_run.sh file that came with this docker-compose.yml file?\" && exit 1 ; else /tmp/update_run.sh && /etc/confluent/docker/run ; fi'"
     healthcheck:
       test: [ "CMD", "nc", "-z", "localhost", "9092" ]
       start_period: 15s
@@ -63,14 +63,14 @@ services:
       retries: 5
 
   nginx:
-    image: nginx:1.23-alpine
+    image: nginx:1.25-alpine
     ports:
       - "8080:80"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 
   event-sourcing-app:
-    image: evgeniy-khyst/postgresql-event-sourcing:2.0.0
+    image: eugene-khyst/postgresql-event-sourcing:${project_version}
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
       SPRING_DATASOURCE_USERNAME: admin

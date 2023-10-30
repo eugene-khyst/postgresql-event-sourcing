@@ -21,9 +21,9 @@ package org.springframework.data.domain {
 
 package com.example.eventsourcing {
 
-  package projection {
+  package com.example.eventsourcing.projection {
 
-    class OrderProjection ##[dotted] {
+    class OrderProjection {
       -id: UUID
       -version: int
       -status: OrderStatus
@@ -37,16 +37,16 @@ package com.example.eventsourcing {
       -cancelledDate: Instant
     }
 
-    class WaypointProjection ##[dotted] {
+    class WaypointProjection {
       -address: String
       -latitude: double
       -longitude: double
     }
   }
 
-  package dto {
+  package com.example.eventsourcing.dto {
 
-    class OrderDto ##[dotted] {
+    class OrderDto {
       orderId: UUID
       eventType: String
       eventTimestamp: long
@@ -58,13 +58,13 @@ package com.example.eventsourcing {
       driverId: UUID
     }
 
-    class WaypointDto ##[dotted] {
+    class WaypointDto {
       address: String
       latitude: double
       longitude: double
     }
 
-    enum OrderStatus ##[dotted] {
+    enum OrderStatus {
       PLACED
       ADJUSTED
       ACCEPTED

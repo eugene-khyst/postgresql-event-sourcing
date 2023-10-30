@@ -5,18 +5,18 @@ scale max 1100 height
 
 set separator none
 
-package org.springframework.data.jpa.repository {
+left to right direction
+
+package org.springframework.data.jpa.repository  {
   interface JpaRepository
 }
 
-package com.example.eventsourcing {
+package eventsourcing.postgresql #DDDDDD {
 
-  package repository {
-
-    interface OrderProjectionRepository ##[dotted]
+  package eventsourcing.postgresql.repository {
 
     class AggregateRepository {
-      +createAggregateIfAbsent(AggregateType, UUID)
+      +createAggregateIfAbsent(String, UUID)
       +checkAndUpdateAggregateVersion(UUID, int, int): boolean
       +createAggregateSnapshot(Aggregate): void
       +readAggregateSnapshot(UUID, Integer): Optional<Aggregate>
@@ -25,7 +25,7 @@ package com.example.eventsourcing {
     class EventRepository {
       +appendEvent(Event): EventWithId
       +readEvents(UUID, Integer, Integer): List<EventWithId>
-      +readEventsAfterCheckpoint(AggregateType, BigInteger, long): List<EventWithId>
+      +readEventsAfterCheckpoint(String, BigInteger, long): List<EventWithId>
     }
 
     class EventSubscriptionRepository {
@@ -35,68 +35,106 @@ package com.example.eventsourcing {
     }
   }
 
-  package service {
+  package eventsourcing.postgresql.service {
 
     class AggregateStore {
       -aggregateRepository: AggregateRepository
       -eventRepository: EventRepository
       +saveAggregate(Aggregate): List<EventWithId>
-      +readAggregate(AggregateType, UUID): Aggregate
-      +readAggregate(AggregateType, UUID, Integer): Aggregate
+      +readAggregate(String, UUID): Aggregate
+      +readAggregate(String, UUID, Integer): Aggregate
     }
 
-    class CommandProcessor {
-      -aggregateStore: AggregateStore
-      -commandHandlers: List<CommandHandler>
-      -defaultCommandHandler: DefaultCommandHandler
-      -aggregateChangesHandlers: List<SyncEventHandler>
-      +process(Command): Aggregate
+    together {
+      class CommandProcessor {
+        -aggregateStore: AggregateStore
+        -commandHandlers: List<CommandHandler>
+        -defaultCommandHandler: DefaultCommandHandler
+        -aggregateChangesHandlers: List<SyncEventHandler>
+        +process(Command): Aggregate
+      }
+
+      class EventSubscriptionProcessor {
+        -subscriptionRepository: EventSubscriptionRepository
+        -eventRepository: EventRepository
+        +processNewEvents(AsyncEventHandler): void
+      }
     }
 
-    class EventSubscriptionProcessor {
-      -subscriptionRepository: EventSubscriptionRepository
-      -eventRepository: EventRepository
-      +processNewEvents(AsyncEventHandler): void
+    together {
+      class ScheduledEventSubscriptionProcessor {
+        -eventHandlers: List<AsyncEventHandler>
+        -eventSubscriptionProcessor: EventSubscriptionProcessor
+        +processNewEvents(): void
+        -processNewEvents(AsyncEventHandler): void
+      }
+
+      class PostgresChannelEventSubscriptionProcessor {
+        -eventHandlers: List<AsyncEventHandler>
+        -eventSubscriptionProcessor: EventSubscriptionProcessor
+        -dataSourceProperties: DataSourceProperties
+        -executor: ExecutorService
+        -latch: CountDownLatch
+        -future: Future
+        -connection: PgConnection
+        -{static} newExecutor(): ExecutorService
+        +start(): void
+        -processNewEvents(AsyncEventHandler): void
+        -getPgConnection(): PgConnection
+        -isActive(): boolean
+        +stop(): void
+      }
     }
 
-    class ScheduledEventSubscriptionProcessor {
-      -eventHandlers: List<AsyncEventHandler>
-      -eventSubscriptionProcessor: EventSubscriptionProcessor
-      +processNewEvents(): void
-    }
-
-    package command {
+    package eventsourcing.postgresql.service.command {
 
       interface CommandHandler {
         handle(Aggregate, Command): void
         getCommandType(): Class
       }
 
-      class DefaultCommandHandler ##[dotted]
-
-      class PlaceOrderCommandHandler ##[dotted]
+      class DefaultCommandHandler
     }
 
-    package event {
+    package eventsourcing.postgresql.service.event {
 
       interface SyncEventHandler {
         handleEvents(List<EventWithId>, Aggregate): void
-        getAggregateType(): AggregateType
+        getAggregateType(): String
       }
 
       interface AsyncEventHandler {
         handleEvent(EventWithId): void
-        getAggregateType(): AggregateType
+        getAggregateType(): String
         getSubscriptionName(): String
       }
+    }
+  }
+}
 
-      class OrderProjectionUpdater ##[dotted] {
+package com.example.eventsourcing {
+
+  package com.example.eventsourcing.repository {
+
+    interface OrderProjectionRepository
+  }
+
+  package com.example.eventsourcing.service {
+
+    package com.example.eventsourcing.service.command {
+
+      class PlaceOrderCommandHandler
+    }
+
+    package com.example.eventsourcing.service.event {
+
+      class OrderProjectionUpdater {
         -repository: OrderProjectionRepository
         -mapper: OrderMapper
         -updateOrderProjection(OrderAggregate): void
       }
 
-      class OrderIntegrationEventSender ##[dotted] {
+      class OrderIntegrationEventSender {
         -aggregateStore: AggregateStore
         -orderMapper: OrderMapper
         -sendDataToKafka(OrderDto): void
@@ -104,19 +142,19 @@ package com.example.eventsourcing {
     }
   }
 
-  package mapper {
+  package com.example.eventsourcing.mapper {
 
-    interface OrderMapper ##[dotted] {
+    interface OrderMapper {
       toProjection(OrderAggregate): OrderProjection
       toDto(Event, OrderAggregate): OrderDto
     }
 
-    class OrderMapperImpl ##[dotted]
+    class OrderMapperImpl << Generated >>
   }
 
-  package controller {
+  package com.example.eventsourcing.service.controller {
 
-    class OrdersController ##[dotted] {
+    class OrdersController {
       -commandProcessor: CommandProcessor
       -orderProjectionRepository: OrderProjectionRepository
       +placeOrder(JsonNode): ResponseEntity<JsonNode>
@@ -127,16 +165,16 @@ package com.example.eventsourcing {
   }
 }
 
-JpaRepository <|-up-- OrderProjectionRepository
+JpaRepository <|-right- OrderProjectionRepository
 
 SyncEventHandler <|.. OrderProjectionUpdater
 
 AsyncEventHandler <|.. OrderIntegrationEventSender
 
-CommandHandler <|.. DefaultCommandHandler
+CommandHandler <|.left. DefaultCommandHandler
 CommandHandler <|.. PlaceOrderCommandHandler
 
-OrderMapper <|.. OrderMapperImpl
+OrderMapper <|.left. OrderMapperImpl
 
 OrdersController o-- CommandProcessor
 OrdersController o-- OrderProjectionRepository
@@ -150,15 +188,18 @@ EventSubscriptionProcessor o-- EventRepository
 ScheduledEventSubscriptionProcessor o-- EventSubscriptionProcessor
 ScheduledEventSubscriptionProcessor o-- AsyncEventHandler
 
+PostgresChannelEventSubscriptionProcessor o-- EventSubscriptionProcessor
+PostgresChannelEventSubscriptionProcessor o-- AsyncEventHandler
+
 CommandProcessor o-- AggregateStore
 CommandProcessor o-- CommandHandler
 CommandProcessor o-- DefaultCommandHandler
 CommandProcessor o-- SyncEventHandler
 
 OrderProjectionUpdater o-- OrderProjectionRepository
-OrderProjectionUpdater o-up- OrderMapper
+OrderProjectionUpdater o-- OrderMapper
 
 OrderIntegrationEventSender o-- AggregateStore
-OrderIntegrationEventSender o-up- OrderMapper
+OrderIntegrationEventSender o-- OrderMapper
 
 @enduml

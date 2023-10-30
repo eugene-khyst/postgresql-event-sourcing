@@ -1,0 +1,52 @@
+plugins {
+    id 'org.springframework.boot' version "${spring_boot_version}"
+    id 'io.spring.dependency-management' version "${spring_dependency_management_version}"
+    id 'com.google.cloud.tools.jib' version "${jib_version}"
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.testcontainers:testcontainers-bom:${testcontainers_version}"
+    }
+}
+
+dependencies {
+    implementation project(':postgresql-event-sourcing-core')
+
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.kafka:spring-kafka'
+
+    implementation 'org.flywaydb:flyway-core'
+    implementation "org.mapstruct:mapstruct:${mapstruct_version}"
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    annotationProcessor "org.mapstruct:mapstruct-processor:${mapstruct_version}"
+    annotationProcessor "org.projectlombok:lombok-mapstruct-binding:${lombok_mapstruct_binding_version}"
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:kafka'
+
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+jib {
+    to.image = "eugene-khyst/postgresql-event-sourcing:${project.version}"
+    from.image = "eclipse-temurin:21-jre"
+}
