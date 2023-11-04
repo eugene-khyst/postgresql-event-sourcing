@@ -11,8 +11,8 @@ skinparam sequence {
 participant "Append event\nTransaction #1" as tx1
 participant "Append event\nTransaction #2" as tx2
 database "PostgreSQL" as db
+participant "Lock table\nfor writes\nTransaction #4" as tx4
 participant "Read events\nafter checkpoint\nTransaction #3" as tx3
-participant "Read events\nafter checkpoint\nTransaction #4" as tx4
 
 tx1 --> db: ""BEGIN TRANSACTION""
 activate tx1
@@ -31,25 +31,30 @@ tx2 --> db: ""COMMIT""
 deactivate tx2
 tx3 --> db: ""BEGIN TRANSACTION""
 activate tx3
-tx3 --> db: ""SELECT LAST_EVENT_ID""\n""FROM ES_EVENT_SUBSCRIPTION""
-db --> tx3: //LAST_EVENT_ID=100//
-tx3 --> db: ""SELECT ID FROM ES_EVENT""\n""WHERE ID > 100""
-db --> tx3: //ID=102//
-note over tx3: Process event with ID=102
+tx3 --> db: ""SELECT LAST_EVENT_ID""\n""AS START_ID""\n""FROM ES_EVENT_SUBSCRIPTION""
+db --> tx3: //START_ID=100//
+tx3 --> db: ""SELECT""\n""pg_sequence_last_value('ES_EVENT_ID_SEQ')""\n""AS END_ID""
+db --> tx3: //END_ID=102//
+note over tx4: Very briefly\nlock the table for writes
+tx4 --> db: ""LOCK ES_EVENT IN SHARE ROW EXCLUSIVE MODE""
+activate tx4
+|||
+|||
+note over tx4: Waiting for pending writes\nto complete (transaction #1)...
+|||
+|||
 tx1 --> db: ""COMMIT""
 deactivate tx1
+db --> tx4
+note over tx4: Table-level lock acquired...
+tx4 --> db: ""COMMIT""
+note over tx4: ...and immediately released
+deactivate tx4
+tx3 --> db: ""SELECT ID FROM ES_EVENT""\n""WHERE ID > 100 AND ID <= 102""
+db --> tx3: //ID=101, ID=102//
+note over tx3: Process events: ID=101, ID=102
 tx3 --> db: ""UPDATE ES_EVENT_SUBSCRIPTION""\n""SET LAST_EVENT_ID = 102""
 tx3 --> db: ""COMMIT""
 deactivate tx3
-|||
-tx4 --> db: ""BEGIN TRANSACTION""
-activate tx4
-tx4 --> db: ""SELECT LAST_EVENT_ID""\n""FROM ES_EVENT_SUBSCRIPTION""
-db --> tx4: //LAST_EVENT_ID=102//
-tx4 --> db: ""SELECT ID FROM ES_EVENT""\n""WHERE ID > 102""
-db --> tx4: //No rows//
-note over tx4: Event with ID=101 is lost
-tx4 --> db: ""COMMIT""
-deactivate tx4
 
 @enduml

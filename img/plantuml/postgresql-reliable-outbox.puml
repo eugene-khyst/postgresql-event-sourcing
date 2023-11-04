@@ -8,11 +8,11 @@ skinparam sequence {
 '  LifeLineBackgroundColor LightGrey
 }
 
-participant "Append Event\nTransaction #1" as tx1
-participant "Append Event\nTransaction #2" as tx2
+participant "Append event\nTransaction #1" as tx1
+participant "Append event\nTransaction #2" as tx2
 database "PostgreSQL" as db
-participant "Read Events\nAfter Checkpoint\nTransaction #3" as tx3
-participant "Read Events\nAfter Checkpoint\nTransaction #4" as tx4
+participant "Read events\nafter checkpoint\nTransaction #3" as tx3
+participant "Read events\nafter checkpoint\nTransaction #4" as tx4
 
 tx1 --> db: ""BEGIN TRANSACTION""
 activate tx1

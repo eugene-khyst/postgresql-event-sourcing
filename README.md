@@ -20,9 +20,10 @@
   - [Loading any revision of the aggregate](#4-5)
   - [Synchronously updating projections](#4-6)
   - [Asynchronously sending integration events to a message broker](#4-7)
-    - [Reliable transactional outbox with PostgreSQL](#4-7-1)
-    - [Database polling](#4-7-2)
-    - [Database polling alternative](#4-7-3)
+    - [Transactional outbox using transaction ID](#4-7-1)
+    - [Transactional outbox using table-level lock](#4-7-2)
+    - [Database polling](#4-7-3)
+    - [Listen/Notify as an alternative to database polling](#4-7-4)
   - [Adding new asynchronous event handlers](#4-8)
   - [Drawbacks](#4-9)
 - [Project structure](#5)
@@ -390,7 +391,7 @@ and processes them:
      WHERE SUBSCRIPTION_NAME = :subscriptionName
     ```
 
-#### <a id="4-7-1"></a>Reliable transactional outbox with PostgreSQL
+#### <a id="4-7-1"></a>Transactional outbox using transaction ID
 
 Using only the event ID to track events processed by the subscription is unreliable 
 and can result in lost events.
@@ -423,9 +424,43 @@ All transaction IDs less than `xmin` are either committed and visible, or rolled
 Even if transaction #2 started after transaction #1 and committed first,
 the events it created won't be read by the event subscription processor until transaction #1 is committed.
 
-![PostgreSQL reliable transactional outbox](img/postgresql-reliable-outbox.svg)
+![PostgreSQL reliable transactional outbox using transaction ID](img/postgresql-reliable-outbox.svg)
 
-#### <a id="4-7-2"></a>Database polling
+> **NOTE**  
+> The transaction ID solution is used by default as it is non-blocking.
+
+#### <a id="4-7-2"></a>Transactional outbox using table-level lock
+
+With the transaction ID solution, event subscription processor doesn't wait for in-progress transactions to complete.
+Events created by already committed transactions will not be available for processing 
+while transactions started earlier are still in-progress. 
+These events will be processed immediately after these earlier transactions have completed.
+
+An alternative solution is to use PostgreSQL explicit locking to make event subscription processor wait for in-progress transactions.
+
+Before reading new events, the event subscription processor
+* gets the most recently issued ID sequence number,
+* very briefly locks the table for writes to wait for all pending writes to complete.
+
+The most recently issued `ES_EVENT_ID_SEQ` sequence number is obtained using the `pg_sequence_last_value` function:
+`SELECT pg_sequence_last_value('ES_EVENT_ID_SEQ')`.
+
+Events are created with the command `INSERT INTO ES_EVENT...` that acquires the `ROW EXCLUSIVE` lock mode on `ES_EVENT` table.
+`ROW EXCLUSIVE (RowExclusiveLock)` lock mode is acquired by any command that modifies data in a table.
+
+The command `LOCK ES_EVENT IN SHARE ROW EXCLUSIVE MODE` acquires the `SHARE ROW EXCLUSIVE` lock mode on `ES_EVENT` table.
+`SHARE ROW EXCLUSIVE (ShareRowExclusiveLock)` mode protects a table against concurrent data changes, 
+and is self-exclusive so that only one session can hold it at a time. 
+
+`SHARE ROW EXCLUSIVE` lock must be acquired in a separate transaction (`Propagation.REQUIRES_NEW`).
+The transaction must contain only this command and commit quickly to release the lock, so writes can resume.
+
+When the lock is acquired and released, it means 
+that there are no more uncommitted writes with an ID less than or equal to the ID returned by `pg_sequence_last_value`.
+
+![PostgreSQL reliable transactional outbox using table-level lock](img/postgresql-reliable-outbox-with-lock.svg)
+
+#### <a id="4-7-3"></a>Database polling
 
 To get new events from the `ES_EVENT` table, the application has to poll the database.
 The shorter the polling period, the shorter the delay between persisting a new event and processing it by the subscription. 
@@ -444,7 +479,7 @@ event-sourcing:
     polling-interval: PT1S
 ```
 
-#### <a id="4-7-3"></a>Database polling alternative
+#### <a id="4-7-4"></a>Listen/Notify as an alternative to database polling
 
 To reduce the lag associated with database polling, the polling period can be set to a very low value, 
 such as 1 second.
@@ -481,7 +516,8 @@ event-sourcing:
   subscriptions: postgres-channel # Enable Listen/Notify event subscription processing
 ```
 
-This mechanism is used by default as more efficient.
+> **NOTE**  
+> The Listen/Notify mechanism is used by default as it is more efficient.
 
 ### <a id="4-8"></a>Adding new asynchronous event handlers
 
