@@ -1,4 +1,5 @@
-# <a id="0"></a>Event Sourcing with PostgreSQL
+# <a id="0"></a>Event Sourcing with PostgreSQL and Kotlin
+***Note***: This is a fork of [postgresql-event-sourcing](https://github.com/evgeniy-khist/postgresql-event-sourcing) refactored to Kotlin. The original repo may be more up to date.
 
 - [Introduction](#1)
 - [Example domain](#2)
