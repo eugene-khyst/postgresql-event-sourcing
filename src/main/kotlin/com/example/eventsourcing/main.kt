@@ -80,7 +80,7 @@ fun app(
         em.setJpaProperties(hibernateProperties)
         em.setPersistenceProviderClass(HibernatePersistenceProvider::class.java)
         em.afterPropertiesSet()
-    }.`object`?.createEntityManager()
+    }.`object`?.createEntityManager() ?: throw RuntimeException("Unable to create entity manager")
 
     val orderProjectionRepository =
         SimpleJpaRepository<OrderProjection, UUID>(OrderProjection::class.java, entityManager)

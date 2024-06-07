@@ -22,9 +22,7 @@ abstract class Aggregate protected constructor(val aggregateId: UUID, var versio
         check(changes.isEmpty()) { "Aggregate has non-empty changes" }
         events.forEach(Consumer { event: Event ->
             check(event.version > version) {
-                "Event version %s <= aggregate base version %s".formatted(
-                    event.version, nextVersion
-                )
+                "Event version ${event.version} <= aggregate base version $nextVersion"
             }
             apply(event)
             version = event.version
@@ -37,9 +35,7 @@ abstract class Aggregate protected constructor(val aggregateId: UUID, var versio
 
     protected fun applyChange(event: Event) {
         check(event.version == nextVersion) {
-            "Event version %s doesn't match expected version %s".formatted(
-                event.version, nextVersion
-            )
+            "Event version ${event.version} doesn't match expected version $nextVersion"
         }
         apply(event)
         changes.add(event)
@@ -60,27 +56,13 @@ abstract class Aggregate protected constructor(val aggregateId: UUID, var versio
         try {
             val method = this.javaClass.getMethod(methodName, o.javaClass)
             method.invoke(this, o)
-        } catch (e: NoSuchMethodException) {
-            throw UnsupportedOperationException(
-                "Aggregate %s doesn't support %s(%s)".format(
-                    this.javaClass, methodName, o.javaClass.simpleName
-                ),
-                e
-            )
-        } catch (e: IllegalAccessException) {
-            throw UnsupportedOperationException(
-                "Aggregate %s doesn't support %s(%s)".formatted(
-                    this.javaClass, methodName, o.javaClass.simpleName
-                ),
-                e
-            )
-        } catch (e: InvocationTargetException) {
-            throw UnsupportedOperationException(
-                "Aggregate %s doesn't support %s(%s)".formatted(
-                    this.javaClass, methodName, o.javaClass.simpleName
-                ),
-                e
-            )
+        } catch (e: Exception) {
+            throw when(e) {
+                is NoSuchMethodException,
+                is IllegalAccessException,
+                is InvocationTargetException -> UnsupportedOperationException("Aggregate ${this.javaClass} doesn't support ${methodName}(${o.javaClass.simpleName})", e)
+                else -> e
+            }
         }
     }
 

@@ -2,15 +2,13 @@
 
 [plugins]
 
-org-springframework-boot = { id = "org.springframework.boot", version = "3.0.4" }
+org-springframework-boot = { id = "org.springframework.boot", version = "3.3.0" }
 
-io-spring-dependency-management = { id = "io.spring.dependency-management", version = "1.1.0" }
+io-spring-dependency-management = { id = "io.spring.dependency-management", version = "1.1.5" }
 
 org-jetbrains-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 
 [versions]
-
-kotlin = "1.9.20"
 
 http4k = "4.43.0.0"
 
@@ -21,6 +19,10 @@ jetbrains-exposed = "0.40.1"
 strikt = "0.34.1"
 
 junit-jupiter = "5.8.2"
+
+kotlin = "2.0.0"
+
+flyway = "10.14.0"
 
 [libraries]
 
@@ -50,11 +52,9 @@ exposed-jdbc = { group = "org.jetbrains.exposed", name = "exposed-jdbc", version
 
 exposed-java-time = { group = "org.jetbrains.exposed", name = "exposed-java-time", version.ref = "jetbrains-exposed" }
 
-flyway-core = { module = "org.flywaydb:flyway-core" }
+flyway-core = "org.flywaydb:flyway-core:10.14.0"
 
 kotlin-stdlib-jdk8 = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8" }
-
-kotlin-scripting-compiler-embeddable = { group = "org.jetbrains.kotlin", name = "kotlin-scripting-compiler-embeddable", version.ref = "kotlin" }
 
 strikt-bom = { group = "io.strikt", name = "strikt-bom", version.ref = "strikt" }
 
@@ -75,3 +75,9 @@ kafka = { module = "org.testcontainers:kafka" }
 junit-jupiter-engine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junit-jupiter" }
 
 testcontainers-bom = "org.testcontainers:testcontainers-bom:1.19.8"
+
+kotlin-build-tools-impl = { module = "org.jetbrains.kotlin:kotlin-build-tools-impl" }
+
+kotlin-scripting-compiler-embeddable = { group = "org.jetbrains.kotlin", name = "kotlin-scripting-compiler-embeddable", version.ref = "kotlin" }
+
+flyway-database-postgresql = "org.flywaydb:flyway-database-postgresql:_"
