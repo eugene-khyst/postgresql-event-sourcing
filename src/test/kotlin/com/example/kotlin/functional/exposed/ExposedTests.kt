@@ -1,9 +1,9 @@
-package com.example.kotlin.exposed
+package com.example.kotlin.functional.exposed
 
 import com.example.eventsourcing.dto.OrderStatus
 import com.example.eventsourcing.projection.OrderProjectionEn
 import com.example.eventsourcing.projection.WaypointProjectionE
-import com.zaxxer.hikari.HikariConfig
+import com.example.kotlin.functional.TestEnvironment
 import com.zaxxer.hikari.HikariDataSource
 import org.flywaydb.core.Flyway
 import org.jetbrains.exposed.sql.Database
@@ -18,7 +18,7 @@ import java.util.*
 class ExposedTests {
     @Test
     fun `exposed definitions work properly`() {
-        val dataSource = HikariDataSource(HikariConfig("/hikari.properties"))
+        val dataSource = HikariDataSource(TestEnvironment.hikariConfig)
 
         val flyway = Flyway.configure()
             .dataSource(dataSource)

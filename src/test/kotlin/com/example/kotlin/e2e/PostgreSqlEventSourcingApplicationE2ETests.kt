@@ -7,6 +7,9 @@ import org.http4k.core.then
 import org.http4k.filter.ClientFilters
 import org.junit.jupiter.api.Test
 
+/*
+ * Requires having the docker apps running
+ */
 class PostgreSqlEventSourcingApplicationE2ETests {
     @Test
     fun orderTestScript() {
