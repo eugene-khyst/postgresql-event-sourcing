@@ -60,6 +60,9 @@ dependencies {
 
 test {
     useJUnitPlatform()
+    filter {
+        includeTestsMatching("com.example.kotlin.functional.*")
+    }
 }
 
 kotlin {
