@@ -28,9 +28,6 @@ jobs:
         with:
           branch: ${{ env.DEPENDENCY_UPDATE_BRANCH }}
 
-      - name: Setup Gradle
-        uses: gradle/gradle-build-action@v3
-
       - name: RefreshVersions
         run: ./gradlew refreshVersions
 

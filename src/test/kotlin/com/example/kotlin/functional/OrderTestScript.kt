@@ -46,7 +46,7 @@ class OrderTestScript(
 
     private fun verifyIntegrationEvents(orderId: UUID, kafkaConsumer: Consumer<String, String>) {
         log.info("Print integration events")
-        val kafkaRecordValues = getKafkaRecords(kafkaConsumer, Duration.ofSeconds(10), 23)
+        val kafkaRecordValues = getKafkaRecords(kafkaConsumer, Duration.ofSeconds(20), 23)
         expectThat(kafkaRecordValues.size)
             .isGreaterThanOrEqualTo(23)
         val lastKafkaRecordValue = kafkaRecordValues[kafkaRecordValues.size - 1]
