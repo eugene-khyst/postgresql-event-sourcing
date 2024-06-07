@@ -1,8 +1,8 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.0.4'
-    id 'io.spring.dependency-management' version '1.1.0'
-    id 'org.jetbrains.kotlin.jvm' version '1.9.20'
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+    id 'org.jetbrains.kotlin.jvm'
 }
 
 group = 'com.example'
@@ -24,51 +24,38 @@ configurations {
     }
 }
 
-ext {
-    set('postgresql_version', '42.5.4')
-    set('testcontainers_version', '1.17.6')
-    set('http4k_version', '4.43.0.0')
-    set('exposedVersion', '0.40.1')
-    set('striktVersion', '0.34.1')
-    set('junitVersion', '5.8.2')
-}
-
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.kafka:spring-kafka'
+    implementation libs.spring.boot.starter.data.jpa
+    implementation libs.spring.kafka
 
-    implementation "org.postgresql:postgresql:${postgresql_version}"
+    implementation libs.org.postgresql.postgresql
 
-    implementation platform("org.http4k:http4k-bom:${http4k_version}")
-    implementation "org.http4k:http4k-core"
-    implementation "org.http4k:http4k-server-undertow"
-    implementation "org.http4k:http4k-client-apache"
-    implementation "org.http4k:http4k-format-jackson"
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
-    implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
-    implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
-    implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
-    implementation("org.jetbrains.exposed:exposed-java-time:$exposedVersion")
-    implementation 'org.flywaydb:flyway-core'
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    implementation platform(libs.http4k.bom)
+    implementation platform(libs.testcontainers.bom)
+
+    implementation libs.http4k.core
+    implementation libs.http4k.server.undertow
+    implementation libs.http4k.client.apache
+    implementation libs.http4k.format.jackson
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.exposed.core)
+    implementation(libs.exposed.dao)
+    implementation(libs.exposed.jdbc)
+    implementation(libs.exposed.java.time)
+    implementation libs.flyway.core
+    implementation libs.kotlin.stdlib.jdk8
 
 
-    testImplementation(platform("io.strikt:strikt-bom:$striktVersion"))
+    testImplementation(platform(libs.strikt.bom))
 
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
-    testImplementation("io.strikt:strikt-jackson")
-    testImplementation("io.strikt:strikt-jvm")
-    testImplementation("io.strikt:strikt-spring")
-    testImplementation 'org.springframework.kafka:spring-kafka-test'
-    testImplementation 'org.testcontainers:junit-jupiter'
-    testImplementation 'org.testcontainers:postgresql'
-    testImplementation 'org.testcontainers:kafka'
-}
-
-dependencyManagement {
-    imports {
-        mavenBom "org.testcontainers:testcontainers-bom:${testcontainers_version}"
-    }
+    testRuntimeOnly(libs.junit.jupiter.engine)
+    testImplementation(libs.strikt.jackson)
+    testImplementation(libs.strikt.jvm)
+    testImplementation(libs.strikt.spring)
+    testImplementation libs.spring.kafka.test
+    testImplementation libs.junit.jupiter
+    testImplementation libs.org.testcontainers.postgresql
+    testImplementation libs.kafka
 }
 
 test {

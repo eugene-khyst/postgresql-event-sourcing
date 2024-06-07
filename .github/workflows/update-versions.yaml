@@ -1,0 +1,53 @@
+name: RefreshVersions PR
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '00 07 * * 1'
+
+jobs:
+
+  Refresh-Version:
+    name: Run the refresh version
+    runs-on: ubuntu-latest
+    env:
+      MAIN_BRANCH: "main"
+      DEPENDENCY_UPDATE_BRANCH: "dependency-update"
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: ${{ env.MAIN_BRANCH }}
+
+      - uses: actions/setup-java@v2
+        with:
+          distribution: 'zulu' # See 'Supported distributions' for available options
+          java-version: '21'
+
+      - uses: peterjgrainger/action-create-branch@v2.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          branch: ${{ env.DEPENDENCY_UPDATE_BRANCH }}
+
+      - name: RefreshVersions
+        run: ./gradlew refreshVersions
+
+      - uses: EndBug/add-and-commit@v7
+        name: Commit
+        with:
+          author_name: "GitHub Actions"
+          author_email: "noreply@github.com"
+          branch: ${{ env.DEPENDENCY_UPDATE_BRANCH }}
+          message: "Refresh versions.properties"
+          # Force pushing will prevent errors when the branch is not removed
+          # push: "--force"
+
+      - uses: repo-sync/pull-request@v2
+        name: Pull Request
+        with:
+          source_branch: ${{ env.DEPENDENCY_UPDATE_BRANCH }}
+          destination_branch: ${{ env.MAIN_BRANCH }}
+          pr_draft: true
+          pr_title: "Update gradle dependencies"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
