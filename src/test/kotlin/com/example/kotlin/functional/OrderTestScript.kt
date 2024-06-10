@@ -13,6 +13,7 @@ import org.apache.kafka.common.serialization.StringDeserializer
 import org.http4k.core.HttpHandler
 import org.http4k.core.Method
 import org.http4k.core.Request
+import org.http4k.format.Jackson.json
 import org.slf4j.LoggerFactory
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory
 import org.springframework.kafka.test.utils.KafkaTestUtils
@@ -49,7 +50,7 @@ class OrderTestScript(
         }
     }
 
-    private fun verifyIntegrationEvents(orderId: UUID, kafkaConsumer: Consumer<String, String>) {
+    fun verifyIntegrationEvents(orderId: UUID, kafkaConsumer: Consumer<String, String>) {
         log.info("Print integration events")
         val kafkaRecordValues = getKafkaRecords(kafkaConsumer, Duration.ofSeconds(30), 23)
         expectThat(kafkaRecordValues.size)
@@ -327,13 +328,17 @@ class OrderTestScript(
         expectThat(response.bodyString().jsonify()).isEqualTo(expectedJson.jsonify())
     }
 
-    private fun createKafkaConsumer(topicsToConsume: List<String>): Consumer<String, String> {
+    fun createKafkaConsumer(topicToConsume: String): Consumer<String, String> {
+        return createKafkaConsumer(listOf(topicToConsume))
+    }
+
+    fun createKafkaConsumer(topicsToConsume: List<String>): Consumer<String, String> {
         val consumerProps = KafkaTestUtils.consumerProps(
             kafkaBrokers,
             this.javaClass.simpleName + "-consumer",
             "true"
         ).also {
-            it[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "latest"
+            it[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "earliest"
         }
         val cf = DefaultKafkaConsumerFactory(
             consumerProps,
@@ -345,7 +350,7 @@ class OrderTestScript(
         }
     }
 
-    private fun getKafkaRecords(
+    fun getKafkaRecords(
         consumer: Consumer<String, String>,
         timeout: Duration,
         minRecords: Int

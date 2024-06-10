@@ -5,19 +5,18 @@ import com.example.kotlin.functional.TestEnvironment.kafka
 import org.junit.jupiter.api.MethodOrderer
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestMethodOrder
-
-@TestMethodOrder(MethodOrderer.OrderAnnotation::class)
+import java.time.Duration
+import java.util.*
 
 class PostgreSqlEventSourcingApplicationTests {
-    private val script = OrderTestScript(TestEnvironment.newApp(TOPIC_ORDER_EVENTS), kafka.bootstrapServers, TOPIC_ORDER_EVENTS)
-
-    @Test
-    fun `can create new order`(){
-        script.placeNewOrder()
-    }
 
     @Test
     fun orderTestScript() {
-        OrderTestScript(TestEnvironment.newApp(TOPIC_ORDER_EVENTS), kafka.bootstrapServers, TOPIC_ORDER_EVENTS).execute()
+        val topic = TOPIC_ORDER_EVENTS + "-" + UUID.randomUUID()
+        OrderTestScript(
+            TestEnvironment.newApp(topic),
+            kafka.bootstrapServers,
+            topic
+        ).execute()
     }
 }
