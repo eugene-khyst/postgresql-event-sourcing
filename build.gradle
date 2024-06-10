@@ -34,7 +34,6 @@ dependencies {
     implementation(libs.flyway.database.postgresql)
     implementation libs.kotlin.stdlib.jdk8
 
-
     testImplementation(platform(libs.strikt.bom))
 
     testRuntimeOnly(libs.junit.jupiter.engine)

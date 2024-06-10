@@ -2,21 +2,13 @@ package com.example.kotlin.functional
 
 import com.example.eventsourcing.app
 import com.example.eventsourcing.config.IntegrationEventProperties
-import com.example.eventsourcing.config.Kafka.TOPIC_ORDER_EVENTS
 import com.example.eventsourcing.config.SnapshottingProperties
-import com.example.kotlin.functional.TestEnvironment.databaseName
-import com.example.kotlin.functional.TestEnvironment.databasePassword
-import com.example.kotlin.functional.TestEnvironment.databaseUsername
-import com.example.kotlin.functional.TestEnvironment.postgres
+import com.example.kotlin.fakes.TestClock
 import com.zaxxer.hikari.HikariConfig
-import org.http4k.server.Http4kServer
-import org.http4k.server.Undertow
-import org.http4k.server.asServer
 import org.testcontainers.containers.KafkaContainer
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 import java.time.Clock
-import java.time.ZoneId
 import java.util.*
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
@@ -34,7 +26,8 @@ object TestEnvironment {
     val kafka: KafkaContainer = KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.1")).also {
         it.start()
     }
-    val clock = Clock.fixed(Clock.systemDefaultZone().instant(), ZoneId.systemDefault())
+    val clock = TestClock()
+
     val hikariConfig = HikariConfig(Properties().apply {
         putAll(
             mapOf(
