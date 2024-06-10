@@ -3,6 +3,7 @@ package com.example.kotlin.functional
 import com.example.eventsourcing.config.Json
 import com.example.eventsourcing.config.Json.jsonify
 import com.example.eventsourcing.config.Json.objectMapper
+import com.example.eventsourcing.config.Kafka
 import com.example.eventsourcing.config.Kafka.TOPIC_ORDER_EVENTS
 import com.fasterxml.jackson.core.JsonProcessingException
 import org.apache.kafka.clients.consumer.Consumer
@@ -31,10 +32,14 @@ import java.util.stream.StreamSupport
 
 class OrderTestScript(
     private val httpHandler: HttpHandler,
-    private val kafkaBrokers: String
+    private val kafkaBrokers: String,
+    private val integrationKafkaTopic: String = TOPIC_ORDER_EVENTS
 ) {
+    private val riderId: UUID = UUID.fromString("63770803-38f4-4594-aec2-4c74918f7165")
+    private val driverId: UUID = UUID.fromString("2c068a1a-9263-433f-a70b-067d51b98378")
+
     fun execute() {
-        createKafkaConsumer(listOf(TOPIC_ORDER_EVENTS)).use { kafkaConsumer ->
+        createKafkaConsumer(listOf(integrationKafkaTopic)).use { kafkaConsumer ->
             val orderId = placeNewOrder()
             adjustOrder(orderId)
             acceptTheOrder(orderId)
@@ -58,7 +63,7 @@ class OrderTestScript(
                       "eventTimestamp": ${TestEnvironment.clock.instant().toEpochMilli()},
                       "version":23,
                       "status":"COMPLETED",
-                      "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
+                      "riderId":"$riderId",
                       "price":300.00,
                       "route":[
                         {
@@ -72,7 +77,7 @@ class OrderTestScript(
                           "lon":30.485170724431292
                         }
                       ],
-                      "driverId":"2c068a1a-9263-433f-a70b-067d51b98378"
+                      "driverId":"$driverId"
                     }
                     """.format(orderId).jsonify()
         )
@@ -106,7 +111,7 @@ class OrderTestScript(
                       "id":"%s",
                       "version":23,
                       "status":"COMPLETED",
-                      "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
+                      "riderId":"$riderId",
                       "price":300.00,
                       "route":[
                         {
@@ -120,7 +125,7 @@ class OrderTestScript(
                           "lon":30.485170724431292
                         }
                       ],
-                      "driverId":"2c068a1a-9263-433f-a70b-067d51b98378",
+                      "driverId":"$driverId",
                       "placedDate": "${TestEnvironment.clock.now()}",
                       "acceptedDate": "${TestEnvironment.clock.now()}",
                       "completedDate": "${TestEnvironment.clock.now()}"
@@ -135,7 +140,7 @@ class OrderTestScript(
             orderId, """
                     {
                       "status":"ACCEPTED",
-                      "driverId":"2c068a1a-9263-433f-a70b-067d51b98378"
+                      "driverId":"$driverId"
                     }
                     """
         )
@@ -147,7 +152,7 @@ class OrderTestScript(
                       "id":"%s",
                       "version":22,
                       "status":"ACCEPTED",
-                      "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
+                      "riderId":"$riderId",
                       "price":300.00,
                       "route":[
                         {
@@ -161,7 +166,7 @@ class OrderTestScript(
                           "lon":30.485170724431292
                         }
                       ],
-                      "driverId":"2c068a1a-9263-433f-a70b-067d51b98378",
+                      "driverId":"$driverId",
                       "placedDate" : "${TestEnvironment.clock.now()}",
                       "acceptedDate" : "${TestEnvironment.clock.now()}"
                     }
@@ -193,7 +198,7 @@ class OrderTestScript(
                       "id":"%s",
                       "version":21,
                       "status":"ADJUSTED",
-                      "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
+                      "riderId":"$riderId",
                       "price":300.00,
                       "route":[
                         {
@@ -213,12 +218,13 @@ class OrderTestScript(
         )
     }
 
-    private fun placeNewOrder(): UUID {
+    fun placeNewOrder(riderId: UUID = UUID.fromString("63770803-38f4-4594-aec2-4c74918f7165")): UUID {
         log.info("Place a new order")
+
         val orderId = placeOrder(
             """
                     {
-                      "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
+                      "riderId":"$riderId",
                       "price":"123.45",
                       "route":[
                         {
@@ -242,7 +248,7 @@ class OrderTestScript(
                       "id":"%s",
                       "version":1,
                       "status":"PLACED",
-                      "riderId":"63770803-38f4-4594-aec2-4c74918f7165",
+                      "riderId":"$riderId",
                       "price":123.45,
                       "route":[
                         {

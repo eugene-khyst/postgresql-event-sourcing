@@ -15,6 +15,7 @@ import org.springframework.kafka.core.KafkaTemplate
 class OrderIntegrationEventSender(
     private val aggregateStore: AggregateStore,
     private val kafkaTemplate: KafkaTemplate<String, String>,
+    private val kafkaTopic: String,
     private val objectMapper: ObjectMapper
 ) : AsyncEventHandler {
     private val orderMapper = OrderMapper()
@@ -25,13 +26,13 @@ class OrderIntegrationEventSender(
             AggregateType.ORDER, event.aggregateId, event.version
         )
         val orderDto = orderMapper.toDto(event, aggregate as OrderAggregate)
-        sendDataToKafka(orderDto)
+        sendDataToKafka(orderDto, kafkaTopic)
     }
 
-    private fun sendDataToKafka(orderDto: OrderDto) {
+    private fun sendDataToKafka(orderDto: OrderDto, topic: String) {
         log.info("Publishing integration event {}", orderDto)
         kafkaTemplate.send(
-            TOPIC_ORDER_EVENTS,
+            topic,
             orderDto.orderId.toString(),
             objectMapper.writeValueAsString(orderDto)
         )

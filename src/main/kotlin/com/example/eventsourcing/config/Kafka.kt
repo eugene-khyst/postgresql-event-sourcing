@@ -13,8 +13,8 @@ import java.util.*
 object Kafka {
     const val TOPIC_ORDER_EVENTS = "order-events"
 
-    fun kafkaClient(kafkaBootstrapServers: String): KafkaTemplate<String, String> {
-        createTopics(TOPIC_ORDER_EVENTS)
+    fun kafkaClient(kafkaBootstrapServers: String, topic: String): KafkaTemplate<String, String> {
+        createTopics(topic)
 
         val configs = mapOf(
             ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to kafkaBootstrapServers,

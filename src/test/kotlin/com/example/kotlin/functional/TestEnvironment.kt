@@ -2,6 +2,7 @@ package com.example.kotlin.functional
 
 import com.example.eventsourcing.app
 import com.example.eventsourcing.config.IntegrationEventProperties
+import com.example.eventsourcing.config.Kafka.TOPIC_ORDER_EVENTS
 import com.example.eventsourcing.config.SnapshottingProperties
 import com.example.kotlin.functional.TestEnvironment.databaseName
 import com.example.kotlin.functional.TestEnvironment.databasePassword
@@ -30,7 +31,7 @@ object TestEnvironment {
             .withUsername(databaseUsername)
             .withPassword(databasePassword).apply { start() }
 
-    val kafka: KafkaContainer = KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.3.2")).also {
+    val kafka: KafkaContainer = KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.1")).also {
         it.start()
     }
     val clock = Clock.fixed(Clock.systemDefaultZone().instant(), ZoneId.systemDefault())
@@ -47,11 +48,11 @@ object TestEnvironment {
             )
         )
     })
-    val appHandler = app(
+    fun newApp(integrationKafkaTopic: String) = app(
         clock,
         kafka.bootstrapServers,
         SnapshottingProperties(true, 10),
         hikariConfig,
-        IntegrationEventProperties(true, 1.toDuration(DurationUnit.SECONDS))
+        IntegrationEventProperties(true, 1.toDuration(DurationUnit.SECONDS), integrationKafkaTopic)
     )
 }

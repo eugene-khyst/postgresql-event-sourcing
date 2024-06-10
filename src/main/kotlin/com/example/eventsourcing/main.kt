@@ -3,6 +3,7 @@ package com.example.eventsourcing
 import com.example.eventsourcing.config.EventSourcingProperties
 import com.example.eventsourcing.config.IntegrationEventProperties
 import com.example.eventsourcing.config.Json.objectMapper
+import com.example.eventsourcing.config.Kafka.TOPIC_ORDER_EVENTS
 import com.example.eventsourcing.config.Kafka.kafkaClient
 import com.example.eventsourcing.config.SnapshottingProperties
 import com.example.eventsourcing.controller.ErrorHandler
@@ -93,8 +94,9 @@ fun app(
     )
 
     if (integrationEventProperties.enabled) {
-        val kafkaTemplate = kafkaClient(kafkaBootstrapServers)
-        val orderIntegrationEventSender = OrderIntegrationEventSender(aggregateStore, kafkaTemplate, objectMapper)
+        val kafkaTemplate = kafkaClient(kafkaBootstrapServers, integrationEventProperties.topic)
+        val orderIntegrationEventSender =
+            OrderIntegrationEventSender(aggregateStore, kafkaTemplate, integrationEventProperties.topic, objectMapper)
         val eventSubscriptionProcessor =
             EventSubscriptionProcessor(EventSubscriptionRepository(namedParameterJdbcTemplate), eventRepository)
 
@@ -155,7 +157,7 @@ fun main() {
         (System.getenv("KAFKA_BOOTSTRAP_SERVERS") ?: "localhost:9092"),
         SnapshottingProperties(true, 10),
         HikariConfig("/hikari.properties"),
-        IntegrationEventProperties(true, 1.toDuration(DurationUnit.SECONDS))
+        IntegrationEventProperties(true, 1.toDuration(DurationUnit.SECONDS), TOPIC_ORDER_EVENTS)
     )
         .asServer(Undertow(8080))
         .start()
