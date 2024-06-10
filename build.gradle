@@ -19,6 +19,7 @@ dependencies {
     implementation libs.org.postgresql.postgresql
 
     implementation platform(libs.http4k.bom)
+    implementation(platform(libs.forkhandles.bom))
     implementation platform(libs.testcontainers.bom)
 
     implementation libs.http4k.core
