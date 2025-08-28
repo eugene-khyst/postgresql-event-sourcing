@@ -24,6 +24,7 @@ dependencies {
     implementation 'org.springframework.kafka:spring-kafka'
 
     implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
     implementation "org.mapstruct:mapstruct:${mapstruct_version}"
 
     compileOnly 'org.projectlombok:lombok'
@@ -48,5 +49,17 @@ tasks.named('test') {
 
 jib {
     to.image = "eugene-khyst/postgresql-event-sourcing:${project.version}"
-    from.image = "eclipse-temurin:21-jre"
+    from {
+        image = "gcr.io/distroless/java21-debian12"
+        platforms {
+            platform {
+                architecture = 'amd64'
+                os = 'linux'
+            }
+            platform {
+                architecture = 'arm64'
+                os = 'linux'
+            }
+            }
+    }
 }

@@ -1,8 +1,6 @@
-version: '3'
-
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     environment:
       POSTGRES_DB: postgres
       POSTGRES_USER: admin
@@ -30,7 +28,7 @@ services:
         condition: service_healthy
 
   kafka:
-    image: confluentinc/cp-kafka:7.5.1
+    image: confluentinc/cp-kafka:7.9.2
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
@@ -63,7 +61,7 @@ services:
       retries: 5
 
   nginx:
-    image: nginx:1.25-alpine
+    image: nginx:1.29-alpine
     ports:
       - "8080:80"
     volumes:

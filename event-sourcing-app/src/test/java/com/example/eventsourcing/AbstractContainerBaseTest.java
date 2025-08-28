@@ -12,10 +12,10 @@ abstract class AbstractContainerBaseTest {
     static final KafkaContainer KAFKA;
 
     static {
-        POSTGRES = new PostgreSQLContainer<>(DockerImageName.parse("postgres:15-alpine"));
+        POSTGRES = new PostgreSQLContainer<>(DockerImageName.parse("postgres:17-alpine"));
         POSTGRES.start();
 
-        KAFKA = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.5.1")).withKraft();
+        KAFKA = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.9.2")).withKraft();
         KAFKA.start();
     }
 
