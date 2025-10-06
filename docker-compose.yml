@@ -28,7 +28,7 @@ services:
         condition: service_healthy
 
   kafka:
-    image: confluentinc/cp-kafka:7.9.2
+    image: confluentinc/cp-kafka:7.9.3
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
